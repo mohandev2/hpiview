@@ -10,5 +10,7 @@ all:
 	   exit 1 ;\
 	fi
 	$(MAKE) -f admin/Makefile.common 
+	./configure --enable-debug=full
+	make
 
 .SILENT:
