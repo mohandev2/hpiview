@@ -3,7 +3,8 @@
 #include "voh_string.h"
 
 enum {
-      VOH_LIST_COLUMN_NAME = 0,
+      VOH_LIST_COLUMN_ICON = 0,
+      VOH_LIST_COLUMN_NAME,
       VOH_LIST_COLUMN_ID,
       VOH_LIST_COLUMN_TYPE,
       VOH_LIST_COLUMN_STATE,
@@ -29,6 +30,9 @@ enum {
       VOH_ITER_SENSOR_STATE_NORMAL,
       VOH_ITER_SENSOR_STATE_CRITICAL,
 };
+
+#define VOH_ITER_RPT_STATE_POWER_ON 0x1
+#define VOH_ITER_RPT_STATE_POWER_OFF 0x2
       
 int voh_init(gchar *err);
 int voh_fini(gchar *err);
@@ -55,5 +59,8 @@ gboolean find_iter_by_id(GtkTreeModel *model,
 			 GtkTreeIter *iter);
 
 guint voh_get_sensor_state(SaHpiSensorRecT *sensor, SaHpiSensorReadingT *sv);
-
+gboolean voh_get_power_state(guint id, GtkWidget *menu, gchar *err);
+gboolean voh_set_power_off(guint id, GtkTreeStore *store, gchar *err);
+gboolean voh_set_power_on(guint id, GtkTreeStore *store, gchar *err);
+gboolean voh_set_power_cycle(guint id, GtkTreeStore *store, gchar *err);
 

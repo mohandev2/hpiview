@@ -245,21 +245,42 @@ GtkWidget *hview_get_domain_window(HviewWidgetsT *w)
 
       w->domain_view = gtk_tree_view_new();
 
+      renderer = gtk_cell_renderer_pixbuf_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->domain_view),
+						  VOH_LIST_COLUMN_ICON,
+						  NULL,
+						  renderer,
+						  "pixbuf",
+						  VOH_LIST_COLUMN_ICON, NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->domain_view),
+				     VOH_LIST_COLUMN_ICON);
+      gtk_tree_view_column_set_cell_data_func(col, renderer,
+					      hview_tree_pixbuf_cell_func,
+					      NULL, NULL);
+      
       renderer = gtk_cell_renderer_text_new();
       gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->domain_view),
-						  -1,
-						  HVIEW_DOMAIN_COLUMN_TITLE,
+						  VOH_LIST_COLUMN_NAME,
+						  NULL,
 						  renderer,
-						  "text", 0, NULL);
-
-      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->domain_view), 0);
-
+						  "text",
+						  VOH_LIST_COLUMN_NAME, NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->domain_view),
+				     VOH_LIST_COLUMN_NAME);
       gtk_tree_view_column_set_cell_data_func(col, renderer,
 					      hview_tree_cell_func, NULL, NULL);
 
+      gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(w->domain_view),
+					FALSE);
+
       domainstore = voh_list_domains(err);
       if (domainstore == NULL) {
-	    hview_print(w, err);
+//	    hview_print(w, err);
+	    domainstore = GTK_TREE_MODEL(gtk_tree_store_new(1,
+							    G_TYPE_STRING));
+	    gtk_tree_view_set_model(GTK_TREE_VIEW(w->domain_view),
+				    domainstore);
+	    g_object_unref(domainstore);
       } else {
 	    gtk_tree_view_set_model(GTK_TREE_VIEW(w->domain_view),
 				    domainstore);
@@ -297,22 +318,41 @@ GtkWidget *hview_get_tree_window(HviewWidgetsT *w, gint page)
 
       w->tab_views[page].tree_view = view = gtk_tree_view_new();
 
+      renderer = gtk_cell_renderer_pixbuf_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(view),
+						  VOH_LIST_COLUMN_ICON,
+						  NULL,
+						  renderer,
+						  "pixbuf",
+						  VOH_LIST_COLUMN_ICON, NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(view),
+				     VOH_LIST_COLUMN_ICON);
+      gtk_tree_view_column_set_cell_data_func(col, renderer,
+					      hview_tree_pixbuf_cell_func,
+					      NULL, NULL);
+
       renderer = gtk_cell_renderer_text_new();
       gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(view),
-						  -1,
-						  HVIEW_RESOURCE_COLUMN_TITLE,
+						  VOH_LIST_COLUMN_NAME,
+						  NULL,
 						  renderer,
-						  "text", 0, NULL);
-
-      col = gtk_tree_view_get_column(GTK_TREE_VIEW(view), 0);
-
+						  "text",
+						  VOH_LIST_COLUMN_NAME, NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(view), VOH_LIST_COLUMN_NAME);
       gtk_tree_view_column_set_cell_data_func(col, renderer,
 					      hview_tree_cell_func, NULL, NULL);
+
+      gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(view),
+					FALSE);
 
       selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
 
       g_signal_connect(G_OBJECT(selection), "changed",
 		       G_CALLBACK(hview_tree_row_selected_call),
+		       (gpointer) w);
+
+      g_signal_connect(G_OBJECT(view), "button-press-event",
+		       G_CALLBACK(hview_button_prees_treeview_call),
 		       (gpointer) w);
 
 
@@ -429,6 +469,89 @@ GtkWidget *hview_get_event_window(HviewWidgetsT *w)
       return window;
 }
 
+GtkWidget *hview_get_tree_popup(GtkTreeModel *store,
+				GtkTreeIter *iter,
+				gpointer data)
+{
+      HviewWidgetsT	*w = (HviewWidgetsT *) data;
+      GtkWidget		*menu,	*smenu;
+      GtkWidget		*item,	*sitem;
+      GtkWidget		*image;
+      guint		type;
+      guint		id;
+      guint		state;
+      gboolean		rv;
+
+      if (store == NULL || iter == NULL)
+	    return NULL;
+      gtk_tree_model_get(store, iter,
+			 VOH_LIST_COLUMN_TYPE, &type, -1);
+
+      switch (type) {
+	case VOH_ITER_IS_RPT:
+	    gtk_tree_model_get(store, iter, VOH_LIST_COLUMN_ID, &id,
+			      VOH_LIST_COLUMN_STATE, &state, -1);
+	    w->iter_id = id;
+	    menu = gtk_menu_new();
+	    if (state & VOH_ITER_RPT_STATE_POWER_ON ||
+				state & VOH_ITER_RPT_STATE_POWER_OFF) {
+		  smenu = gtk_menu_new();
+		  item = gtk_image_menu_item_new_with_mnemonic("power");
+		  if (state & VOH_ITER_RPT_STATE_POWER_ON) {
+			image = create_pixmap("on.png");
+		  } else {
+			image = create_pixmap("off.png");
+		  }
+
+      		  gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(item),
+						image);
+		  gtk_container_add(GTK_CONTAINER(menu), item);
+		  gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), smenu);
+
+		  sitem = gtk_image_menu_item_new_with_mnemonic("on");
+		  g_signal_connect(G_OBJECT(sitem), "activate",
+					 G_CALLBACK(hview_set_power_on_call),
+					 data);
+		  image = create_pixmap("on.png");
+		  gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(sitem),
+						image);
+		  gtk_container_add(GTK_CONTAINER(smenu), sitem);
+
+		  sitem = gtk_image_menu_item_new_with_mnemonic("off");
+		  g_signal_connect(G_OBJECT(sitem), "activate",
+					 G_CALLBACK(hview_set_power_off_call),
+					 data);
+		  image = create_pixmap("off.png");
+		  gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(sitem),
+						image);
+		  gtk_container_add(GTK_CONTAINER(smenu), sitem);
+
+		  sitem = gtk_menu_item_new_with_mnemonic("off/on");
+		  g_signal_connect(G_OBJECT(sitem), "activate",
+					 G_CALLBACK(hview_set_power_cycle_call),
+					 data);
+		  gtk_container_add(GTK_CONTAINER(smenu), sitem);
+	    }
+	    return menu;
+	case VOH_ITER_IS_SENSOR:
+	    menu = gtk_menu_new();
+	    sitem = gtk_image_menu_item_new_with_mnemonic("read sensor");
+	    image = create_pixmap("viewmag.png");
+	    gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(sitem), image);
+	    g_signal_connect(G_OBJECT(sitem), "activate",
+			     G_CALLBACK(hview_read_sensor_call), data);
+	    gtk_container_add(GTK_CONTAINER(menu), sitem);
+	    break;
+	case VOH_ITER_IS_CONTROL:
+	case VOH_ITER_IS_INVENTORY:
+	case VOH_ITER_IS_WATCHDOG:
+	case VOH_ITER_IS_ANNUNCIATOR:
+	default:
+	    return NULL;
+      }
+      return menu;
+}
+
 
 	/* hview_print() puts message to "log window"
 	 * arguments:
@@ -542,6 +665,64 @@ void hview_tree_cell_func(GtkTreeViewColumn	*col,
 	      default:
 		  break;
 	    }
+	    break;
+	default:
+	    break;
+      }
+}
+
+void hview_tree_pixbuf_cell_func(GtkTreeViewColumn	*col,
+			 GtkCellRenderer	*renderer,
+			 GtkTreeModel		*model,
+			 GtkTreeIter		*iter,
+			 gpointer		data)
+{
+      GdkPixbuf		*image = NULL;
+      guint		type,	state;
+      GError		*error = NULL;
+
+      gtk_tree_model_get(model, iter, VOH_LIST_COLUMN_TYPE, &type,
+			 VOH_LIST_COLUMN_STATE, &state, -1);
+
+      switch (type) {
+	case VOH_ITER_IS_DOMAIN:
+	    break;
+	case VOH_ITER_IS_PATH:
+	    break;
+	case VOH_ITER_IS_RPT:
+	    if (state & VOH_ITER_RPT_STATE_POWER_ON) {
+		  image = gdk_pixbuf_new_from_file(find_pixmap_file("on.png"),
+						   &error);
+		  if (error) {
+			g_critical ("Could not load pixbuf: %s\n",
+				    error->message);
+			g_error_free(error);
+		  }
+	    } else if (state & VOH_ITER_RPT_STATE_POWER_OFF) {
+		  image = gdk_pixbuf_new_from_file(find_pixmap_file("off.png"),
+						   &error);
+		  if (error) {
+			g_critical ("Could not load pixbuf: %s\n",
+				    error->message);
+			g_error_free(error);
+		  }
+	    }
+
+	    if (image) {
+		  gtk_tree_store_set(GTK_TREE_STORE(model), iter,
+				     VOH_LIST_COLUMN_ICON, image, -1);
+		  g_object_unref(image);
+	    }
+
+	    break;
+	case VOH_ITER_IS_SENSOR:
+	    break;
+	case VOH_ITER_IS_CONTROL:
+	case VOH_ITER_IS_INVENTORY:
+	case VOH_ITER_IS_WATCHDOG:
+	case VOH_ITER_IS_ANNUNCIATOR:
+	    break;
+	case VOH_ITER_IS_VALUE:
 	    break;
 	default:
 	    break;

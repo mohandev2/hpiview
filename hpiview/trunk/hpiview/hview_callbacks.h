@@ -32,6 +32,9 @@ void hview_tree_row_activated_call(GtkWidget *widget,
 					  GtkTreeIter *iter,
 					  GtkTreePath *path,
 					  gpointer data);
+gboolean hview_button_prees_treeview_call(GtkWidget *widget,
+				      GdkEventButton *event,
+				      gpointer data);
 void hview_domain_row_activated_call(GtkWidget *widget,
 				     GtkTreeIter *iter,
 				     GtkTreePath *path,
@@ -46,6 +49,9 @@ void hview_switch_page_call(GtkNotebook *notebook,
 			    GtkNotebookPage *page,
 			    guint pagenum,
 			    gpointer data);
+void hview_set_power_off_call(GtkWidget *widget, gpointer data);
+void hview_set_power_on_call(GtkWidget *widget, gpointer data);
+void hview_set_power_cycle_call(GtkWidget *widget, gpointer data);
 
 #endif
 

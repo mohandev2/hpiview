@@ -227,6 +227,51 @@ void hview_tree_row_selected_call(GtkTreeSelection *selection,
       }
 }
 
+gboolean hview_button_prees_treeview_call(GtkWidget *widget,
+				      GdkEventButton *event,
+				      gpointer data)
+{
+      GtkWidget		*menu;
+      GtkTreePath	*path;
+      GtkTreeViewColumn	*column;
+      GtkTreeModel	*store;
+      GtkTreeSelection	*selection;
+      GtkTreeIter	iter;
+      gint		x,	y;
+      gchar		*name;
+
+      if (event->type == GDK_BUTTON_PRESS && event->button == 3) {
+	    gtk_widget_get_pointer(widget, &x, &y);
+	    gtk_tree_view_widget_to_tree_coords(GTK_TREE_VIEW(widget),
+						x, y,
+						&x, &y);
+	    if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget),
+					      x, y,
+					      &path, NULL, NULL, NULL)) {
+		  store = gtk_tree_view_get_model(GTK_TREE_VIEW(widget));
+		  if (store == NULL)
+			return TRUE;
+		  gtk_tree_model_get_iter(store, &iter, path);
+		  gtk_tree_path_free(path);
+		  menu = hview_get_tree_popup(store, &iter, data);
+		  if (menu) {
+			gtk_widget_show_all(menu);
+			gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
+				       event->button,
+				       gdk_event_get_time((GdkEvent*)event));
+		  } else {
+			return TRUE;
+		  }
+	    } else {
+		  return TRUE;
+	    }
+	    return FALSE;
+      }
+
+      return FALSE;
+	    
+}
+
 gint hview_readsensor_thread(gpointer data)
 {
       HviewWidgetsT	*w = (HviewWidgetsT *) data;
@@ -390,3 +435,74 @@ void hview_open_session_call(GtkWidget *widget, gpointer data)
       }
 }
 
+void hview_set_power_off_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT		*w = (HviewWidgetsT *) data;
+      GtkWidget			*tview;
+      GtkTreeModel		*model;
+      gint			page;
+      gboolean			res;
+      gchar			err[100];
+
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return;
+      tview = w->tab_views[page].tree_view;
+
+      model = gtk_tree_view_get_model(GTK_TREE_VIEW(tview));
+      res = voh_set_power_off(w->iter_id, GTK_TREE_STORE(model), err);
+      if (res == FALSE) {
+	    hview_print(w, err);
+      }
+}
+
+void hview_set_power_on_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT		*w = (HviewWidgetsT *) data;
+      GtkWidget			*tview;
+      GtkTreeModel		*model;
+      gint			page;
+      gboolean			res;
+      gchar			err[100];
+
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return;
+      tview = w->tab_views[page].tree_view;
+
+      model = gtk_tree_view_get_model(GTK_TREE_VIEW(tview));
+      voh_set_power_on(w->iter_id, GTK_TREE_STORE(model), err);
+      if (res == FALSE) {
+	    hview_print(w, err);
+      }
+}
+
+void hview_set_power_cycle_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT		*w = (HviewWidgetsT *) data;
+      GtkWidget			*tview;
+      GtkTreeModel		*model;
+      gint			page;
+      gboolean			res;
+      gchar			err[100];
+
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return;
+      tview = w->tab_views[page].tree_view;
+
+      model = gtk_tree_view_get_model(GTK_TREE_VIEW(tview));
+      voh_set_power_cycle(w->iter_id, GTK_TREE_STORE(model), err);
+      if (res == FALSE) {
+	    hview_print(w, err);
+      }
+}
