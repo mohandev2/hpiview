@@ -915,7 +915,8 @@ gboolean voh_read_sensor(GtkTreeStore *store, guint sessionid, guint resourceid,
       gboolean			res;
 
       res = hutil_find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
-		                  entryid, resid, &iter, HUTIL_FIRST_ITER);
+		                  entryid, resid, &iter,
+				  HUTIL_FIRST_ITER | HUTIL_WITH_PARENT);
       if (res == FALSE) {
 	    VOH_ERROR(err, "Reading sensor failed (invalid argument)", -1);
 	    return FALSE;
