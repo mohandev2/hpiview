@@ -1,0 +1,7 @@
+To build hpiview do:
+make -f Makefile.dist
+./configure
+make
+cd HpiView
+./HpiView
+
