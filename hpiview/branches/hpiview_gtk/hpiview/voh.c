@@ -1,10 +1,10 @@
 #include "voh.h"
 
-#define V_ERROR(str, err, rv) sprintf(err, "%s (error code: %s)", \
-			              vohError2String(rv));
-SaHpiSessionIdT	sessionid;
+#define VOH_ERROR(err, str, rv) if (err) \
+				sprintf(err, "%s (error code: %s)", \
+				str, vohError2String(rv));
 
-extern gchar voh_msg_err[100];
+static SaHpiSessionIdT	sessionid;
 
 static void fixstr(SaHpiTextBufferT *strptr, char *outbuff)
 {
@@ -24,9 +24,7 @@ int voh_init(gchar *err)
 
       rv = saHpiSessionOpen(SAHPI_UNSPECIFIED_DOMAIN_ID, &sessionid, NULL);
 	if (rv != SA_OK) {
-	      if (err)
-		    sprintf(err, "Session opening failed (%s)",
-			    vohError2String(rv));
+	      VOH_ERROR(err, "Session opening failed", rv);
 	      return -1;
 	}
 
@@ -35,9 +33,7 @@ int voh_init(gchar *err)
 	 */
 	rv = saHpiDiscover(sessionid);
 	if (rv != SA_OK) {
-	      if (err)
-		    sprintf(err, "Discovering failed (%s)",
-			    vohError2String(rv));
+	      VOH_ERROR(err, "Discovering failed", rv);
 	      return -1;
 	}
 
@@ -114,17 +110,53 @@ GtkTreeModel *voh_domain_info(gchar *err)
 
 GtkTreeModel *voh_resource_info(guint id, gchar *err)
 {
+      SaErrorT		rv;
+      SaHpiRptEntryT	entry;
       GtkTreeStore	*info_store;
       GtkTreeIter	iter;
-      gchar		ids[10];
+      gchar		name[1024];
+
+      rv = saHpiRptEntryGetByResourceId(sessionid, (SaHpiResourceIdT)id,
+				      &entry);
+      if (rv != SA_OK) {
+	    sprintf(err, "Resource info getting failed (%s)",
+			  vohError2String(rv));
+	    return NULL;
+      }
 
       info_store = gtk_tree_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
 
       gtk_tree_store_append(info_store, &iter, NULL);
-      sprintf(ids, "%d", id);
+      sprintf(name, "%d", id);
       gtk_tree_store_set(info_store, &iter,
 			 0, "ResourceID",
-			 1, ids,
+			 1, name,
+			 -1);
+
+      gtk_tree_store_append(info_store, &iter, NULL);
+      vohFullEntityPath2String(&(entry.ResourceEntity), name);
+      gtk_tree_store_set(info_store, &iter,
+			 0, "Enity path",
+			 1, name,
+			 -1);
+
+      gtk_tree_store_append(info_store, &iter, NULL);
+      gtk_tree_store_set(info_store, &iter,
+			 0, "Capabilities",
+			 1, vohCapabilities2String(entry.ResourceCapabilities),
+			 -1);
+
+      gtk_tree_store_append(info_store, &iter, NULL);
+      gtk_tree_store_set(info_store, &iter,
+			 0, "HotSwapCapabilities",
+			 1, vohHsCapabilities2String(entry.HotSwapCapabilities),
+			 -1);
+
+      gtk_tree_store_append(info_store, &iter, NULL);
+      fixstr(&(entry.ResourceTag), name);
+      gtk_tree_store_set(info_store, &iter,
+			 0, "ResourceTag",
+			 1, name,
 			 -1);
 
       return GTK_TREE_MODEL(info_store);
@@ -192,10 +224,10 @@ int voh_list_rdrs(GtkTreeStore *pstore, SaHpiResourceIdT rid, gchar *err)
 void voh_add_resource(GtkTreeStore *pstore,
 		      SaHpiRptEntryT *rpt)
 {
-      GtkTreeIter	parent, iter;
-      gint		entity_path_num,	i;
-      guint		id,			type;
-      gboolean		res;
+      GtkTreeIter	iter,	parent,	*found_iter;
+      gint		i;
+      guint		id,	type;
+      gboolean		res,	first = FALSE;
       SaHpiEntityPathT	entity_path = rpt->ResourceEntity;
       gchar		path[100];
 
@@ -204,39 +236,48 @@ void voh_add_resource(GtkTreeStore *pstore,
 		  break;
 	    }
       }
-      entity_path_num = --i;
 
       res = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(pstore), &parent);
-      for (i = entity_path_num; i >= 0; i--) {
-	    vohEntityPath2String(&(entity_path.Entry[i]), path);
-	    if (res == TRUE) {
+
+      if (res == TRUE) {
+	    for (i--; i > 0; i--) {
+		  vohEntityPath2String(&(entity_path.Entry[i]), path);
+
 		  res = find_iter_by_name(GTK_TREE_MODEL(pstore),
-					  VOH_LIST_COLUMN_NAME,
-					  path, &parent);
-	    } else {
-		  res = FALSE;
+						 VOH_LIST_COLUMN_NAME,
+						 path, &parent);
+		  if (res == FALSE)
+			break;
+	    }
+
+      } else {
+	    i--;
+	    first = TRUE;
+      }	    
+
+      for (i; i >= 0; i--) {
+	    vohEntityPath2String(&(entity_path.Entry[i]), path);
+	    if (first == FALSE)
+		  gtk_tree_store_append(pstore, &iter, &parent);
+	    else
+		  gtk_tree_store_append(pstore, &iter, NULL);
+	    
+	    if (i == 0) {
+		  type = VOH_ITER_IS_RPT;
+		  id = (guint) rpt->ResourceId;
+	    }
+	    else {
+		  type = VOH_ITER_IS_PATH;
+		  id = 0;
 	    }
 	    
-	    if (res == FALSE) {
-		  if (i == entity_path_num)
-			gtk_tree_store_append(pstore, &iter, NULL);
-		  else
-			gtk_tree_store_append(pstore, &iter, &parent);
-		  if (i == 0) {
-			type = VOH_ITER_IS_RPT;
-			id = (guint) rpt->ResourceId;
-		  }
-		  else {
-			type = VOH_ITER_IS_PATH;
-			id = 100;
-		  }
-		  gtk_tree_store_set(pstore, &iter,
-				     VOH_LIST_COLUMN_NAME, path,
-				     VOH_LIST_COLUMN_ID, id,
-				     VOH_LIST_COLUMN_TYPE, type,
-				     -1);
-		  strncpy((char *)&parent, (char *)&iter, sizeof(GtkTreeIter));
-	    }
+	    gtk_tree_store_set(pstore, &iter,
+			       VOH_LIST_COLUMN_NAME, path,
+			       VOH_LIST_COLUMN_ID, id,
+			       VOH_LIST_COLUMN_TYPE, type,
+			       -1);
+	   parent = iter;
+	   first = FALSE;
       }
 }
 
@@ -245,8 +286,11 @@ void voh_add_rdr(GtkTreeStore *pstore,
 		 SaHpiResourceIdT rid)
 {
       gboolean		res;
-      gchar		name[100];
       GtkTreeIter	iter,	parent;
+      SaHpiTextBufferT	strptr;
+      gchar		name[100];
+
+
       if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(pstore), &parent)
 	  							== FALSE)
 	    return;
@@ -254,11 +298,11 @@ void voh_add_rdr(GtkTreeStore *pstore,
       res = find_iter_by_id(GTK_TREE_MODEL(pstore), VOH_LIST_COLUMN_ID,
 			    (guint)rid, &parent);
       if (res != FALSE) {
-	    sprintf(name, "Rdr #%d", rdr->RecordId);
+	    strptr = rdr->IdString;
+	    fixstr(&strptr, name);
 	    gtk_tree_store_append(pstore, &iter, &parent);
 	    gtk_tree_store_set(pstore, &iter,
-			       VOH_LIST_COLUMN_NAME,
-			       		vohRdrType2String(rdr->RdrType),
+			       VOH_LIST_COLUMN_NAME, name,
 			       VOH_LIST_COLUMN_ID, (guint)rdr->RecordId,
 			       VOH_LIST_COLUMN_TYPE, VOH_ITER_IS_RDR,
 			       -1);
@@ -283,8 +327,7 @@ gboolean find_iter_by_id(GtkTreeModel *model,
 	    if (gtk_tree_model_iter_children(model, &child, iter) == TRUE) {
 		  res = find_iter_by_id(model, column_num, req_id, &child);
 		  if (res == TRUE) {
-			strncpy((char *)iter, (char *)&child,
-						sizeof(GtkTreeIter));
+			*iter = child;
 			return TRUE;
 		  }
 	    }
@@ -303,8 +346,10 @@ gboolean find_iter_by_name(GtkTreeModel *model,
       gchar		*name;
       GtkTreeIter	child;
 
+      if (iter == NULL)
+	    return FALSE;
 
-      while (res != FALSE) {
+      while (res == TRUE) {
 	    gtk_tree_model_get(model, iter, column_num, &name, -1);
 	    if (strcmp(name, req_name) == 0) {
 		  g_free(name);
@@ -313,10 +358,10 @@ gboolean find_iter_by_name(GtkTreeModel *model,
 	    g_free(name);
 
 	    if (gtk_tree_model_iter_children(model, &child, iter) == TRUE) {
-		  res = find_iter_by_name(model, column_num, req_name, &child);
+		  res = find_iter_by_name(model, column_num,
+						 req_name, &child);
 		  if (res == TRUE) {
-			strncpy((char *)iter, (char *)&child,
-						sizeof(GtkTreeIter));
+			*iter = child;
 			return TRUE;
 		  }
 	    }

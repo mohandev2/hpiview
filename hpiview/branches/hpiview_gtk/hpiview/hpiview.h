@@ -1,52 +1,30 @@
+/*      -*- linux-c -*-
+ *
+ * Copyright (c) 2004 by Intel Corp.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  This
+ * file and program are licensed under a BSD style license.  See
+ * the Copying file included with the OpenHPI distribution for
+ * full licensing terms.
+ *
+ * Authors:
+ *	   Denis Sadykov
+ *
+ *
+ */
+
 #ifndef __HPIVIEW_H__
 #define __HPIVIEW_H__
 
-#define HVIEW_VERSION		2.0
-#define HVIEW_NAME_VERSION	"OpenHpi View version: 2.0"
-
-#define HVIEW_ABOUT	"OpenHpi View ver. 2.0\n Author: Denis Sadykov, 2004"
-
-#define HVIEW_TITLE			"OpenHpi View"
-#define HVIEW_DOMAIN_COLUMN_TITLE	"\tDomains"
-#define HVIEW_RESOURCE_COLUMN_TITLE	"\tResources"
-
-#define HVIEW_MAIN_WINDOW_WIDTH		500
-#define HVIEW_MAIN_WINDOW_HEIGHT	450
-#define HVIEW_LOG_WINDOW_WIDTH		HVIEW_MAIN_WINDOW_WIDTH
-#define HVIEW_LOG_WINDOW_HEIGHT		150
-#define HVIEW_DETAIL_WINDOW_WIDTH	300
-#define HVIEW_DETAIL_WINDOW_HEIGHT	250
-#define HVIEW_TREE_WINDOW_WIDTH		200
-#define HVIEW_TREE_WINDOW_HEIGHT	HVIEW_DETAIL_WINDOW_HEIGHT
-#define HVIEW_ABOUT_WINDOW_WIDTH	200
-#define HVIEW_ABOUT_WINDOW_HEIGHT	100
-
-#define HVIEW_TREE_STORE_IS_DOMAINS	0
-#define HVIEW_TREE_STORE_IS_RESOURCES	1
-#define HVIEW_TREE_STORE_IS_UNKNOWN	-1
-
-
 static void hview_init(void);
+static void hview_fini(void);
 
-static GtkWidget *hview_get_log_window(void);
-static GtkWidget *hview_get_detail_window(void);
-static GtkWidget *hview_get_tree_window(void);
-static GtkWidget *hview_get_menubar(void);
-static GtkWidget *hview_get_toolbar(void);
+static GtkWidget *hview_get_log_window(HviewWidgetsT *w);
+static GtkWidget *hview_get_detail_window(HviewWidgetsT *w);
+static GtkWidget *hview_get_tree_window(HviewWidgetsT *w);
+static GtkWidget *hview_get_menubar(HviewWidgetsT *w);
+static GtkWidget *hview_get_toolbar(HviewWidgetsT *w);
 
-static void hview_quit_call(void);
-static void hview_clear_log_call(void);
-static void hview_load_plugin_call(void);
-static void hview_unload_plugin_call(void);
-static void hview_redescover_call(void);
-static void hview_about_call(void);
-static void hview_tree_column_activated_call(GtkTreeViewColumn *column);
-static void hview_tree_row_activated_call(void);
-static void hview_tree_row_selected_call(GtkTreeSelection *selection);
-
-static int hview_which_tree_store(GtkTreeViewColumn *column);
-static void hview_print(const gchar *string);
-static void hview_statusbar_push(const gchar *string);
-
-void progress_window(void);
 #endif /* __HPIVIEW_H__ */
