@@ -600,7 +600,7 @@ const char *vohSensorUnits2String(SaHpiSensorUnitsT unit)
 const char *vohSensorUnits2Short(SaHpiSensorUnitsT unit)
 {
       static cMap units_map[] = {
-		{SAHPI_SU_UNSPECIFIED,	"c.u."},
+		{SAHPI_SU_UNSPECIFIED,	""},
 		{SAHPI_SU_DEGREES_C,	"C"},
 		{SAHPI_SU_DEGREES_F,	"F"},
 		{SAHPI_SU_DEGREES_K,	"K"},
@@ -700,9 +700,19 @@ const char *vohSensorValue2FullString(SaHpiSensorRecT *sensor,
 				     SaHpiSensorReadingT *sv)
 {
       static char	value[100];
+      char		baseu[100];
 
-      sprintf(value, "%s (%s)", vohSensorValue2String(sv),
-	      vohSensorUnits2Short(sensor->DataFormat.BaseUnits));
+      if (sv->IsSupported == FALSE)
+	    return "";
+
+      if (sv->Type == SAHPI_SENSOR_READING_TYPE_BUFFER) {
+	    sprintf(baseu, "");
+      } else {
+	    sprintf(baseu, "(%s)", vohSensorUnits2Short(
+					sensor->DataFormat.BaseUnits));
+      }
+
+      sprintf(value, "%s %s", vohSensorValue2String(sv), baseu);
 
       return value;
 }
@@ -723,6 +733,22 @@ const char *vohSensorThdMask2String(SaHpiSensorThdMaskT mask)
 
       return hpiBitMask2String(mask_map, mask);
 
+}
+
+const char *vohReadWriteThds2String(SaHpiSensorThdMaskT readm,
+				    SaHpiSensorThdMaskT writem,
+				    SaHpiSensorThdMaskT mask)
+{
+
+      if ((readm & mask) && (writem & mask)) {
+	    return "(RW)";
+      } else if (!(readm & mask) && (writem & mask)) {
+	    return "(WO)";
+      } else if ((readm & mask) && !(writem & mask)) {
+	    return "(RO)";
+      } else {
+	    return "(NA)";
+      }
 }
 
 const char *vohSensorValue2String(SaHpiSensorReadingT *sv)
@@ -781,3 +807,4 @@ vohPowerState2String(SaHpiResetActionT state)
 
       return ValueToString(ps_map, state, "%d");
 }
+

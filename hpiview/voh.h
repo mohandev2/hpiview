@@ -3,8 +3,8 @@
 #include "voh_string.h"
 
 enum {
-      VOH_LIST_COLUMN_ICON = 0,
-      VOH_LIST_COLUMN_NAME,
+      VOH_LIST_COLUMN_NAME = 0,
+      VOH_LIST_COLUMN_ICON,
       VOH_LIST_COLUMN_ID,
       VOH_LIST_COLUMN_TYPE,
       VOH_LIST_COLUMN_STATE,
@@ -31,8 +31,12 @@ enum {
       VOH_ITER_SENSOR_STATE_CRITICAL,
 };
 
-#define VOH_ITER_RPT_STATE_POWER_ON 0x1
-#define VOH_ITER_RPT_STATE_POWER_OFF 0x2
+#define VOH_ITER_RPT_STATE_UNSPECIFIED		0x0
+#define VOH_ITER_RPT_STATE_POWER_ON		0x1
+#define VOH_ITER_RPT_STATE_POWER_OFF		0x2
+#define VOH_ITER_RPT_STATE_RESET_ASSERT		0x4
+#define VOH_ITER_RPT_STATE_RESET_DEASSERT	0x8
+
       
 int voh_init(gchar *err);
 int voh_fini(gchar *err);
@@ -63,4 +67,9 @@ gboolean voh_get_power_state(guint id, GtkWidget *menu, gchar *err);
 gboolean voh_set_power_off(guint id, GtkTreeStore *store, gchar *err);
 gboolean voh_set_power_on(guint id, GtkTreeStore *store, gchar *err);
 gboolean voh_set_power_cycle(guint id, GtkTreeStore *store, gchar *err);
+
+gboolean voh_set_reset_cold(guint id, GtkTreeStore *store, gchar *err);
+gboolean voh_set_reset_warm(guint id, GtkTreeStore *store, gchar *err);
+gboolean voh_set_reset_assert(guint id, GtkTreeStore *store, gchar *err);
+gboolean voh_set_reset_deassert(guint id, GtkTreeStore *store, gchar *err);
 
