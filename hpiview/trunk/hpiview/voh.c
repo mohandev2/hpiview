@@ -2713,7 +2713,7 @@ gboolean voh_get_idr_area_with_field(guint sessionid,
 		}
 
 		obj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
-		area_list = g_list_prepend(area_list, obj);
+		area_list = g_list_append(area_list, obj);
 		obj->name = g_strdup(vohIdrAreaType2String(area_header.Type));
 		obj->state = VOH_OBJECT_READABLE;
 		obj->value.type = VOH_OBJECT_TYPE_UINT;
@@ -2723,7 +2723,8 @@ gboolean voh_get_idr_area_with_field(guint sessionid,
 
 		fieldid = SAHPI_FIRST_ENTRY;
 		while (fieldid != SAHPI_LAST_ENTRY) {
-			rv = saHpiIdrFieldGet(sid, rid, inventory.IdrId, areaid,
+			rv = saHpiIdrFieldGet(sid, rid, inventory.IdrId,
+					      area_header.AreaId,
 					      SAHPI_IDR_FIELDTYPE_UNSPECIFIED,
 					      fieldid, &nextfieldid, &field);
 
@@ -2732,7 +2733,7 @@ gboolean voh_get_idr_area_with_field(guint sessionid,
 			}
 
 			fobj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
-			field_list = g_list_prepend(field_list, fobj);
+			field_list = g_list_append(field_list, fobj);
 			fobj->name = g_strdup(vohIdrFieldType2String(
 								field.Type));
 			fobj->state = VOH_OBJECT_READABLE;
