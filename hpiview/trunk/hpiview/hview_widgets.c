@@ -327,12 +327,22 @@ GtkWidget *hwidget_get_resource_popup(GtkTreeModel *store,
 		gtk_container_add(GTK_CONTAINER(menu), sitem); 
 		return menu;
 	case VOH_ITER_IS_CONTROL:
+		return NULL;
 	case VOH_ITER_IS_INVENTORY:
+		menu = gtk_menu_new();
+
+		sitem = gtk_separator_menu_item_new();
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		sitem = hwidget_get_menu_item_from_stock(GTK_STOCK_PREFERENCES,
+						hview_inventory_settings_call,
+						data);
+		gtk_container_add(GTK_CONTAINER(menu), sitem); 
+		return menu;
 	case VOH_ITER_IS_WATCHDOG:
 	case VOH_ITER_IS_ANNUNCIATOR:
 	default:
 		return NULL;
 	}
-	return menu;
 }
 
