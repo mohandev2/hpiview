@@ -234,6 +234,86 @@ tableInventory( QTable *table, int &idx, const SaHpiInventoryRecT &inv )
 
 
 void
+tableCtrlTypeDigital( QTable *table, int &idx, const SaHpiCtrlRecDigitalT dig )
+{
+  tableEntry( table, idx, "Default", hpiCtrlStateDigital2String( dig.Default ) );
+}
+
+
+void
+tableCtrlTypeDiscrete( QTable *table, int &idx, const SaHpiCtrlRecDiscreteT &dis )
+{
+  tableEntryInt( table, idx, "Default", dis.Default );
+}
+
+
+void
+tableCtrlTypeAnalog( QTable *table, int &idx, const SaHpiCtrlRecAnalogT &analog )
+{
+  tableEntryInt( table, idx, "Min", analog.Min );
+  tableEntryInt( table, idx, "Max", analog.Max );
+  tableEntryInt( table, idx, "Default", analog.Default );
+}
+
+
+void
+tableCtrlTypeStream( QTable * /*table*/, int & /*idx*/, const SaHpiCtrlRecStreamT & /*stream*/ )
+{
+}
+
+
+void
+tableCtrlTypeText( QTable * /*table*/, int & /*idx*/, const SaHpiCtrlRecTextT & /*text*/ )
+{
+}
+
+
+void
+tableCtrlTypeOem( QTable *table, int &idx, const SaHpiCtrlRecOemT &oem )
+{
+  tableEntryHex( table, idx, "MId", oem.MId );
+}
+
+
+void
+tableControl( QTable *table, int &idx, const SaHpiCtrlRecT &ctrl )
+{
+  tableEntryInt( table, idx, "Num", ctrl.Num );
+  tableEntryBool( table, idx, "Ignore", ctrl.Ignore );
+  tableEntry( table, idx, "OutputType", hpiCtrlOutputType2String( ctrl.OutputType ) );
+  tableEntry( table, idx, "Type", hpiCtrlType2String( ctrl.Type ) );
+
+  switch( ctrl.Type )
+     {
+       case SAHPI_CTRL_TYPE_DIGITAL:
+	    tableCtrlTypeDigital( table, idx, ctrl.TypeUnion.Digital );
+	    break;
+ 
+       case SAHPI_CTRL_TYPE_DISCRETE:
+	    tableCtrlTypeDiscrete( table, idx, ctrl.TypeUnion.Discrete );
+	    break;
+
+       case SAHPI_CTRL_TYPE_ANALOG:
+	    tableCtrlTypeAnalog( table, idx, ctrl.TypeUnion.Analog );	    
+	    break;
+
+       case SAHPI_CTRL_TYPE_STREAM:
+	    tableCtrlTypeStream( table, idx, ctrl.TypeUnion.Stream );	    
+	    break;
+
+       case SAHPI_CTRL_TYPE_TEXT:
+	    tableCtrlTypeText( table, idx, ctrl.TypeUnion.Text );	    
+	    break;
+
+       case SAHPI_CTRL_TYPE_OEM:
+	    tableCtrlTypeOem( table, idx, ctrl.TypeUnion.Oem );	    
+	    break;
+     }
+
+  tableEntryHex( table, idx, "Oem", ctrl.Oem );
+}
+
+void
 tableRdr( QTable *table, int &idx, const SaHpiRdrT &rdr )
 {
   tableEntryInt( table, idx, "RecordId", rdr.RecordId );
@@ -245,10 +325,14 @@ tableRdr( QTable *table, int &idx, const SaHpiRdrT &rdr )
        case SAHPI_SENSOR_RDR:
             tableSensor( table, idx, rdr.RdrTypeUnion.SensorRec );
             break;
-            
+
        case SAHPI_INVENTORY_RDR:
             tableInventory( table, idx, rdr.RdrTypeUnion.InventoryRec );
             break;
+
+       case SAHPI_CTRL_RDR:
+	    tableControl( table, idx, rdr.RdrTypeUnion.CtrlRec );
+	    break;
 
        default:
             break;

@@ -48,6 +48,9 @@ const char *hpiEventType2String( SaHpiEventTypeT v );
 const char *hpiSensorOptionalData2String( SaHpiSensorOptionalDataT v );
 const char *hpiHsState2String( SaHpiHsStateT v );
 const char *hpiInventChassisType2String( SaHpiInventChassisTypeT v );
+const char *hpiCtrlOutputType2String( SaHpiCtrlOutputTypeT type );
+const char *hpiCtrlType2String( SaHpiCtrlTypeT type );
+const char *hpiCtrlStateDigital2String( SaHpiCtrlStateDigitalT dig );
 
 
 #endif

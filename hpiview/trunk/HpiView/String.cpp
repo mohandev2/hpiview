@@ -909,3 +909,61 @@ hpiInventChassisType2String( SaHpiInventChassisTypeT v )
 
   return ValueToString( map, v, "invalid chassis type: %x" );
 }
+
+
+const char *
+hpiCtrlOutputType2String( SaHpiCtrlOutputTypeT type )
+{
+  static cMap map[] =
+  {
+    { SAHPI_CTRL_GENERIC             , "generic" },
+    { SAHPI_CTRL_LED                 , "led" },
+    { SAHPI_CTRL_FAN_SPEED           , "fan speed" },
+    { SAHPI_CTRL_DRY_CONTACT_CLOSURE , "dry contact closure" },
+    { SAHPI_CTRL_POWER_SUPPLY_INHIBIT, "power supply inhibit" },
+    { SAHPI_CTRL_AUDIBLE             , "audible" },
+    { SAHPI_CTRL_FRONT_PANEL_LOCKOUT , "front panel lockout" },
+    { SAHPI_CTRL_POWER_INTERLOCK     , "power interlock" },
+    { SAHPI_CTRL_POWER_STATE         , "power state " },
+    { SAHPI_CTRL_LCD_DISPLAY         , "lcd display" },
+    { SAHPI_CTRL_OEM                 , "oem" },
+    { 0, 0 }
+  };
+
+  return ValueToString( map, type, "invalid control output type: %x" );
+}
+
+
+const char *
+hpiCtrlType2String( SaHpiCtrlTypeT type )
+{
+  static cMap map[] =
+  {
+    { SAHPI_CTRL_TYPE_DIGITAL , "digital" },
+    { SAHPI_CTRL_TYPE_DISCRETE, "discrete" },
+    { SAHPI_CTRL_TYPE_ANALOG  , "analog" },
+    { SAHPI_CTRL_TYPE_STREAM  , "stream" },
+    { SAHPI_CTRL_TYPE_TEXT    , "text" },
+    { SAHPI_CTRL_TYPE_OEM     , "oem" },
+    { 0, 0 }
+  };
+
+  return ValueToString( map, type, "invalid control type: %x" );
+}
+
+
+const char *
+hpiCtrlStateDigital2String( SaHpiCtrlStateDigitalT dig )
+{
+  static cMap map[] =
+  {
+    { SAHPI_CTRL_STATE_OFF      , "off" },
+    { SAHPI_CTRL_STATE_ON       , "on" },
+    { SAHPI_CTRL_STATE_PULSE_OFF, "pulse off" },
+    { SAHPI_CTRL_STATE_PULSE_ON , "pulse on" },
+    { SAHPI_CTRL_STATE_AUTO     , "auto" },
+    { 0, 0 }
+  };
+
+  return ValueToString( map, dig, "invalid control digital: %x" );
+}
