@@ -162,14 +162,14 @@ GtkTreeModel *voh_resource_info(guint id, gchar *err)
       return GTK_TREE_MODEL(info_store);
 }
 
-GtkTreeModel *voh_rdr_info(guint rid, guint type, guint id, gchar *err)
+GtkTreeModel *voh_rdr_info(guint rid, guint id, gchar *err)
 {
       SaErrorT			rv;
       SaHpiRdrT			rdr;
       SaHpiEntryIdT		nextentryid;
       SaHpiSensorRecT		*sensor;
       GtkTreeStore		*info_store;
-      GtkTreeIter		iter;
+      GtkTreeIter		iter,		child;
       gchar			ids[100];
       gchar			name[1024];
 
@@ -191,7 +191,7 @@ GtkTreeModel *voh_rdr_info(guint rid, guint type, guint id, gchar *err)
       gtk_tree_store_append(info_store, &iter, NULL);
       gtk_tree_store_set(info_store, &iter,
 			 0, "Type",
-			 1, vohRdrType2String(type),
+			 1, vohRdrType2String(rdr.RdrType),
 			 -1);
 
       gtk_tree_store_append(info_store, &iter, NULL);
@@ -239,9 +239,129 @@ GtkTreeModel *voh_rdr_info(guint rid, guint type, guint id, gchar *err)
 	    gtk_tree_store_append(info_store, &iter, NULL);
 	    gtk_tree_store_set(info_store, &iter,
 			       0, "Event states supported",
+			       -1);
+	    gtk_tree_store_append(info_store, &child, &iter);
+	    gtk_tree_store_set(info_store, &child,
 			       1, vohEventState2String(sensor->Events,
 						       sensor->Category),
 			       -1);
+
+	    if (sensor->DataFormat.IsSupported == TRUE) {
+		  gtk_tree_store_append(info_store, &iter, NULL);
+		  gtk_tree_store_set(info_store, &iter,
+				     0, "Sensor data",
+				     -1);
+
+		  gtk_tree_store_append(info_store, &child, &iter);
+		  gtk_tree_store_set(info_store, &child,
+				     0, "Sensor base unit",
+				     1, vohSensorUnits2String(
+					    sensor->DataFormat.BaseUnits),
+				     -1);
+
+		  gtk_tree_store_append(info_store, &child, &iter);
+		  gtk_tree_store_set(info_store, &child,
+				     0, "Modifier base unit",
+				     1, vohSensorUnits2String(
+					    sensor->DataFormat.ModifierUnits),
+				     -1);
+
+		  if (sensor->DataFormat.ModifierUse ==
+		      			SAHPI_SMUU_BASIC_TIMES_MODIFIER) {
+		  	sprintf(name, "%s*%s",
+				vohSensorUnits2String(
+				    sensor->DataFormat.BaseUnits),
+				vohSensorUnits2String(
+					    sensor->DataFormat.ModifierUnits));
+		  } else if (sensor->DataFormat.ModifierUse ==
+		      			SAHPI_SMUU_BASIC_OVER_MODIFIER) {
+			sprintf(name, "%s/%s",
+				vohSensorUnits2String(
+				    sensor->DataFormat.BaseUnits),
+				vohSensorUnits2String(
+					    sensor->DataFormat.ModifierUnits));
+		  } else {
+			sprintf(name, "none");
+		  }
+
+		  gtk_tree_store_append(info_store, &child, &iter);
+		  gtk_tree_store_set(info_store, &child,
+					0, "Modifier use unit",
+					1, name,
+					-1);
+
+		  if (sensor->DataFormat.Range.Flags & SAHPI_SRF_MIN) {
+		       gtk_tree_store_append(info_store, &child, &iter);
+		       sprintf(name, vohSensorValue2String(
+				         &sensor->DataFormat.Range.Min));
+		       gtk_tree_store_set(info_store, &child,
+					  0, "Min value",
+					  1, name,
+					  -1);
+		  }
+
+		  if (sensor->DataFormat.Range.Flags & SAHPI_SRF_MAX) {
+		       gtk_tree_store_append(info_store, &child, &iter);
+		       sprintf(name, vohSensorValue2String(
+				         &sensor->DataFormat.Range.Max));
+		       gtk_tree_store_set(info_store, &child,
+					  0, "Max value",
+					  1, name,
+					  -1);
+		  }
+
+		  if (sensor->DataFormat.Range.Flags & SAHPI_SRF_NORMAL_MIN) {
+		       gtk_tree_store_append(info_store, &child, &iter);
+		       sprintf(name, vohSensorValue2String(
+				         &sensor->DataFormat.Range.NormalMin));
+		       gtk_tree_store_set(info_store, &child,
+					  0, "Normal Min value",
+					  1, name,
+					  -1);
+		  }
+
+		  if (sensor->DataFormat.Range.Flags & SAHPI_SRF_NORMAL_MAX) {
+		       gtk_tree_store_append(info_store, &child, &iter);
+		       sprintf(name, vohSensorValue2String(
+				         &sensor->DataFormat.Range.NormalMax));
+		       gtk_tree_store_set(info_store, &child,
+					  0, "Normal Max value",
+					  1, name,
+					  -1);
+		  }
+
+		  if (sensor->DataFormat.Range.Flags & SAHPI_SRF_NOMINAL) {
+		       gtk_tree_store_append(info_store, &child, &iter);
+		       sprintf(name, vohSensorValue2String(
+				         &sensor->DataFormat.Range.Nominal));
+		       gtk_tree_store_set(info_store, &child,
+					  0, "Nominal value",
+					  1, name,
+					  -1);
+		  }
+	    }
+
+	    
+	    if (sensor->ThresholdDefn.IsAccessible == TRUE) {
+		  gtk_tree_store_append(info_store, &iter, NULL);
+		  gtk_tree_store_set(info_store, &iter,
+				     0, "Thresholds",
+				     -1);
+
+		  gtk_tree_store_append(info_store, &child, &iter);
+		  gtk_tree_store_set(info_store, &child,
+				     0, "Readable thresholds",
+				     1, vohSensorThdMask2String(
+				            sensor->ThresholdDefn.ReadThold),
+				     -1);
+
+		  gtk_tree_store_append(info_store, &child, &iter);
+		  gtk_tree_store_set(info_store, &child,
+				     0, "Writable thresholds",
+				     1, vohSensorThdMask2String(
+				            sensor->ThresholdDefn.WriteThold),
+				     -1);
+	    }
 
 	    break;
 	default:
@@ -249,6 +369,43 @@ GtkTreeModel *voh_rdr_info(guint rid, guint type, guint id, gchar *err)
       }
 
       return GTK_TREE_MODEL(info_store);
+}
+
+gchar *voh_read_sensor(guint rid, guint id, gchar *err)
+{
+      SaErrorT			rv;
+      SaHpiRdrT			rdr;
+      SaHpiEntryIdT		nextentryid;
+      SaHpiSensorRecT		*sensor;
+      SaHpiSensorReadingT	reading;
+      gchar			*val;
+ 
+
+      rv = saHpiRdrGet(sessionid, rid, id, &nextentryid, &rdr);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Rdr info getting failed", rv);
+	    return NULL;
+      }
+
+      if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+	    VOH_ERROR(err, "Rdr entry isn't sensor", -1);
+	    return NULL;
+      }
+
+      sensor = &(rdr.RdrTypeUnion.SensorRec);
+
+      rv = saHpiSensorReadingGet(sessionid, (SaHpiResourceIdT)rid,
+				 sensor->Num, &reading, NULL);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "reading sensor failed", rv);
+	    return NULL;
+      }
+
+      val = g_malloc0(100);
+      sprintf(val, "%s",
+	      vohSensorValue2String(&reading));
+
+      return val;
 }
 
 GtkTreeModel *voh_list_resources(gchar *err)

@@ -139,6 +139,8 @@ void hview_tree_column_activated_call(GtkTreeViewColumn *column,
       GtkTreeIter	iter;
       gchar		err[100];
 
+      gtk_widget_set_state(GTK_WIDGET(w->rsitem), GTK_STATE_INSENSITIVE);
+
       state = hview_which_tree_store(column);
       if (state == HVIEW_TREE_STORE_IS_UNKNOWN)
 	    return;
@@ -209,6 +211,9 @@ void hview_tree_row_selected_call(GtkTreeSelection *selection,
       GtkTreeModel	*details = NULL;
       gchar		err[100];
 
+
+      gtk_widget_set_state(GTK_WIDGET(w->rsitem), GTK_STATE_INSENSITIVE);
+
       if (gtk_tree_selection_get_selected(selection, &store, &iter)) {
 	    gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_TYPE, &type, -1);
 	    gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_ID, &id, -1);
@@ -225,7 +230,9 @@ void hview_tree_row_selected_call(GtkTreeSelection *selection,
 			break;
 		  gtk_tree_model_get(store, &parent, VOH_LIST_COLUMN_ID,
 				     &pid, -1);
-		  details = voh_rdr_info(pid, type, id, err);
+		  details = voh_rdr_info(pid, id, err);
+
+		  gtk_widget_set_sensitive(GTK_WIDGET(w->rsitem), TRUE);
 		  break;
 	    }
 	    gtk_tree_view_set_model(GTK_TREE_VIEW(w->detail_view), details);
@@ -234,3 +241,77 @@ void hview_tree_row_selected_call(GtkTreeSelection *selection,
       }
 }
 
+gint hview_readsensor_thread(gpointer data)
+{
+      HviewWidgetsT	*w = (HviewWidgetsT *) data;
+      GtkTreeModel	*store;
+      GtkTreeViewColumn	*column;
+      GtkTreeSelection	*selection;
+      GtkTreeIter	iter,	parent,	child;
+      guint		id,	pid;
+      gchar		err[100],	*val = NULL;
+
+
+      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(w->tree_view));
+
+      gtk_tree_selection_get_selected(selection, &store, &iter);
+      gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+      gtk_tree_model_iter_parent(store, &parent, &iter);
+      gtk_tree_model_get(store, &parent, VOH_LIST_COLUMN_ID, &pid, -1);
+
+      val = voh_read_sensor(pid, id, err);
+      if (val == NULL) {
+	    hview_print(w, err);
+	    hview_statusbar_push(w, "sensor reading failed");
+      } else {
+	    gtk_tree_store_append(GTK_TREE_STORE(store), &child, &iter);
+	    gtk_tree_store_set(GTK_TREE_STORE(store), &child,
+			       VOH_LIST_COLUMN_NAME, val,
+			       VOH_LIST_COLUMN_TYPE,
+			       VOH_ITER_IS_PATH,
+			       -1);
+
+	    hview_statusbar_push(w, "ready");
+	    g_free(val);
+      }
+
+      gtk_widget_set_sensitive(w->main_window, TRUE);
+
+      return FALSE;
+}
+
+void hview_read_sensor_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT	*w = (HviewWidgetsT *) data;
+      guint		type;
+      GtkTreeModel	*store;
+      GtkTreeIter	iter;
+      GtkTreeViewColumn		*column;
+      GtkTreeSelection	*selection;
+      int		state;
+
+      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(w->tree_view));
+      column = gtk_tree_view_get_column(GTK_TREE_VIEW(w->tree_view), 0);
+      state = hview_which_tree_store(column);
+
+      switch (state) {
+	case HVIEW_TREE_STORE_IS_UNKNOWN:
+	case HVIEW_TREE_STORE_IS_DOMAINS:
+	    return;
+	case HVIEW_TREE_STORE_IS_RESOURCES:
+	    if (gtk_tree_selection_get_selected(selection, &store, &iter)) {
+		  gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_TYPE,
+				     &type, -1);
+		  if (type == VOH_ITER_IS_RDR) {
+			hview_statusbar_push(w, "sensor reading (please wait)");
+			    gtk_widget_set_sensitive(w->main_window, FALSE);
+			    gtk_timeout_add(100, hview_readsensor_thread, data);
+		  }
+	    } else {
+		  hview_print(w, "select sensor please");
+	    }
+	    break;
+      }
+
+}

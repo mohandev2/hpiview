@@ -18,5 +18,9 @@ const char *vohEventCategory2String(SaHpiEventCategoryT category);
 const char *vohSensorEventCtrl2String(SaHpiSensorEventCtrlT ctrl);
 const char *vohEventState2String(SaHpiEventStateT es,
 				 SaHpiEventCategoryT category);
+const char *vohSensorUnits2String(SaHpiSensorUnitsT unit);
+const char *vohSensorUnits2Short(SaHpiSensorUnitsT unit);
+const char *vohSensorThdMask2String(SaHpiSensorThdMaskT mask);
+const char *vohSensorValue2String(SaHpiSensorReadingT *sv);
 
 #endif

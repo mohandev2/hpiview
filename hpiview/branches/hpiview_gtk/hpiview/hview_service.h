@@ -56,6 +56,8 @@ typedef struct HviewWidgets
       GtkWidget		*tree_view;
       GtkWidget		*detail_view;
       GtkWidget		*log_view;
+
+      GtkToolItem	*rsitem;
 } HviewWidgetsT;
 
 enum {

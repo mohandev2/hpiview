@@ -23,7 +23,8 @@ GtkTreeModel *voh_list_resources(gchar *err);
 int voh_list_rdrs(GtkTreeStore *pstore, SaHpiResourceIdT rid, gchar *err);
 GtkTreeModel *voh_domain_info(gchar *err);
 GtkTreeModel *voh_resource_info(guint id, gchar *err);
-GtkTreeModel *voh_rdr_info(guint rid, guint type, guint id, gchar *err);
+GtkTreeModel *voh_rdr_info(guint rid, guint id, gchar *err);
+gchar *voh_read_sensor(guint rid, guint id, gchar *err);
 
 void voh_add_resource(GtkTreeStore *pstore,
 		      SaHpiRptEntryT *rpt);
