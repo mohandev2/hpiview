@@ -68,5 +68,9 @@ void hview_rpt_settings_call(GtkWidget *widget, gpointer data);
 void hview_sensor_settings_ok_response(gpointer data);
 void hview_sensor_settings_call(GtkWidget *widget, gpointer data);
 
+void hview_sensor_masks_apply_response(gpointer data);
+void hview_sensor_assert_mask_set_call(GtkWidget *widget, gpointer data);
+void hview_sensor_deassert_mask_set_call(GtkWidget *widget, gpointer data);
+
 #endif
 

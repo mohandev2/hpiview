@@ -1,5 +1,6 @@
 #include <time.h>
 #include <sys/time.h>
+#include "voh_types.h"
 #include "voh_string.h"
 
 
@@ -8,6 +9,25 @@ typedef struct cMapS
   unsigned int m_value;
   const char  *m_name;
 } cMap;
+
+GList *values2list(cMap *map)
+{
+	GList		*list = NULL;
+	VohEventStateT	*data;
+
+	while (map->m_name) {
+		data = (VohEventStateT *) g_malloc(sizeof(VohEventStateT));
+		data->string = g_strdup(map->m_name);
+		data->value = map->m_value;
+		data->active = FALSE;
+		data->data = NULL;
+		list = g_list_prepend(list, (gpointer) data);
+
+		map++;
+	}
+
+	return list;
+}
 
 static const char *ValueToString(cMap *map, unsigned int value, const char *def)
 {
@@ -542,6 +562,147 @@ const char *vohEventState2String(SaHpiEventStateT es,
 
 	default:
 	    return "unspecified";
+      }
+}
+
+GList *vohEventState2List(SaHpiEventCategoryT category)
+{
+      static cMap threshold_map[] = {
+		{SAHPI_ES_LOWER_MINOR,		"lower_minor"},
+		{SAHPI_ES_LOWER_MAJOR,		"lower_major"},
+		{SAHPI_ES_LOWER_CRIT,		"lower_crit"},
+		{SAHPI_ES_UPPER_MINOR,		"upper_minor"},
+		{SAHPI_ES_UPPER_MAJOR,		"upper_major"},
+		{SAHPI_ES_UPPER_CRIT,		"upper_crit"},
+		{0, 0}
+      };
+      static cMap usage_map[] = {
+		{SAHPI_ES_IDLE,			"idle"},
+		{SAHPI_ES_ACTIVE,		"active"},
+		{SAHPI_ES_BUSY,			"busy"},
+		{0, 0}
+      };
+      static cMap state_map[] = {
+		{SAHPI_ES_STATE_DEASSERTED,	"state_deasserted"},
+		{SAHPI_ES_STATE_ASSERTED,	"state_asserted"},
+		{0, 0}
+      };
+      static cMap pred_fail_map[] = {
+		{SAHPI_ES_PRED_FAILURE_DEASSERT,"pred_failure_deassert"},
+		{SAHPI_ES_PRED_FAILURE_ASSERT,	"pred_failure_assert"},
+		{0, 0}
+      };
+      static cMap limit_map[] = {
+		{SAHPI_ES_LIMIT_NOT_EXCEEDED,	"limit_not_exceeded"},
+		{SAHPI_ES_LIMIT_EXCEEDED,	"limit_exceeded"},
+		{0, 0}
+      };
+      static cMap performance_map[] = {
+		{SAHPI_ES_PERFORMANCE_MET,	"performance_met"},
+		{SAHPI_ES_PERFORMANCE_LAGS,	"performance_lags"},
+		{0, 0}
+      };
+      static cMap severity_map[] = {
+		{SAHPI_ES_OK,			"OK"},
+		{SAHPI_ES_MINOR_FROM_OK,	"minor_from_OK"},
+		{SAHPI_ES_MAJOR_FROM_LESS,	"minor_from_less"},
+		{SAHPI_ES_CRITICAL_FROM_LESS,	"critical_from_less"},
+		{SAHPI_ES_MINOR_FROM_MORE,	"minor_from_more"},
+		{SAHPI_ES_MAJOR_FROM_CRITICAL,	"major_from_critical"},
+		{SAHPI_ES_CRITICAL,		"critical"},
+		{SAHPI_ES_MONITOR,		"monitor"},
+		{SAHPI_ES_INFORMATIONAL,	"informational"},
+		{0, 0}
+      };
+      static cMap presence_map[] = {
+		{SAHPI_ES_DISABLED,		"disabled"},
+		{SAHPI_ES_ENABLED,		"enabled"},
+		{0, 0}
+      };
+      static cMap availability_map[] = {
+		{SAHPI_ES_RUNNING,		"running"},
+		{SAHPI_ES_TEST,			"test"},
+		{SAHPI_ES_POWER_OFF,		"power_off"},
+		{SAHPI_ES_ON_LINE,		"on_line"},
+		{SAHPI_ES_OFF_LINE,		"off_line"},
+		{SAHPI_ES_OFF_DUTY,		"off_duty"},
+		{SAHPI_ES_DEGRADED,		"degraded"},
+		{SAHPI_ES_POWER_SAVE,		"power_save"},
+		{SAHPI_ES_INSTALL_ERROR,	"install_error"},
+		{0, 0}
+      };
+      static cMap redundancy_map[] = {
+		{SAHPI_ES_FULLY_REDUNDANT,	"fully_redundant"},
+		{SAHPI_ES_REDUNDANCY_LOST,	"redundancy_lost"},
+		{SAHPI_ES_REDUNDANCY_DEGRADED,	"redundancy_degraded"},
+		{SAHPI_ES_REDUNDANCY_LOST_SUFFICIENT_RESOURCES,
+		    "redundancy_lost_sufficient_resources"},
+		{SAHPI_ES_NON_REDUNDANT_SUFFICIENT_RESOURCES,
+		    "non_redundant_sufficient_resources"},
+		{SAHPI_ES_NON_REDUNDANT_INSUFFICIENT_RESOURCES,
+		    "non_redundant_insufficient_resources"},
+		{SAHPI_ES_REDUNDANCY_DEGRADED_FROM_FULL,
+		    "redundancy_degraded_from_full"},
+		{SAHPI_ES_REDUNDANCY_DEGRADED_FROM_NON,
+		    "redundancy_degraded_from_non"},
+		{0, 0}
+      };
+      static cMap generic_sensor_spec_map[] = {
+		{SAHPI_ES_STATE_00,		"state_00"},
+		{SAHPI_ES_STATE_01,		"state_01"},
+		{SAHPI_ES_STATE_02,		"state_02"},
+		{SAHPI_ES_STATE_03,		"state_03"},
+		{SAHPI_ES_STATE_04,		"state_04"},
+		{SAHPI_ES_STATE_05,		"state_05"},
+		{SAHPI_ES_STATE_06,		"state_06"},
+		{SAHPI_ES_STATE_07,		"state_07"},
+		{SAHPI_ES_STATE_08,		"state_08"},
+		{SAHPI_ES_STATE_09,		"state_09"},
+		{SAHPI_ES_STATE_10,		"state_10"},
+		{SAHPI_ES_STATE_11,		"state_11"},
+		{SAHPI_ES_STATE_12,		"state_12"},
+		{SAHPI_ES_STATE_13,		"state_13"},
+		{SAHPI_ES_STATE_14,		"state_14"},
+		{0, 0}
+      };
+
+      switch (category) {
+	case SAHPI_EC_THRESHOLD:
+	    return values2list(threshold_map);
+
+	case SAHPI_EC_USAGE:
+	    return values2list(usage_map);
+
+	case SAHPI_EC_STATE:
+	    return values2list(state_map);
+
+	case SAHPI_EC_PRED_FAIL:
+	    return values2list(pred_fail_map);
+
+	case SAHPI_EC_LIMIT:
+	    return values2list(limit_map);
+
+	case SAHPI_EC_PERFORMANCE: 
+	    return values2list(performance_map);
+
+	case SAHPI_EC_SEVERITY:
+	    return values2list(severity_map);
+
+	case SAHPI_EC_PRESENCE:
+	    return values2list(presence_map);
+
+	case SAHPI_EC_AVAILABILITY:
+	    return values2list(availability_map);
+
+	case SAHPI_EC_REDUNDANCY:
+	    return values2list(redundancy_map);
+
+	case SAHPI_EC_GENERIC:
+	case SAHPI_EC_SENSOR_SPECIFIC:
+	    return values2list(generic_sensor_spec_map);
+
+	default:
+	    return NULL;
       }
 }
 

@@ -26,7 +26,7 @@
 #define HVIEW_TREE_WINDOW_HEIGHT	HVIEW_DETAIL_WINDOW_HEIGHT
 #define HVIEW_ABOUT_WINDOW_WIDTH	200
 #define HVIEW_ABOUT_WINDOW_HEIGHT	100
-#define HVIEW_SETTINGS_WINDOW_WIDTH	300
+#define HVIEW_SETTINGS_WINDOW_WIDTH	350
 #define HVIEW_SETTINGS_WINDOW_HEIGHT	400
 
 
@@ -42,5 +42,8 @@ GtkWidget *hview_get_rpt_settings_window(HviewRptDialogWidgetsT *w);
 GtkWidget *hview_get_rpt_empty_dialog_window(HviewWidgetsT *w);
 GtkWidget *hview_get_sensor_settings_window(HviewSenDialogWidgetsT *w);
 
+GtkWidget *hview_get_sensor_assert_mask_window(HviewSenEventMasksWidgetsT *mdw);
+GtkWidget *hview_get_sensor_deassert_mask_window(HviewSenEventMasksWidgetsT
+									*mdw);
 
 #endif /* __HVIEW_WINDOWS_H__ */

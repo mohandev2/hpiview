@@ -56,9 +56,8 @@ void hview_event_print(HviewWidgetsT *w, const gchar *string)
 
 void hview_statusbar_push(HviewWidgetsT *w, const gchar *str)
 {
-      guint	contid;
 
-      gtk_statusbar_push(GTK_STATUSBAR(w->statusbar), contid, str);
+      gtk_statusbar_push(GTK_STATUSBAR(w->statusbar), 0, str);
 }
 
 void hview_tree_cell_func(GtkTreeViewColumn	*col,

@@ -36,5 +36,8 @@ const char *vohResourceEventType2String(SaHpiResourceEventTypeT evtype);
 const char *vohDomainEventType2String(SaHpiDomainEventTypeT evtype);
 const char *vohSwEventType2String(SaHpiSwEventTypeT evtype);
 
+
+GList *vohEventState2List(SaHpiEventCategoryT category);
+
 #endif
 
