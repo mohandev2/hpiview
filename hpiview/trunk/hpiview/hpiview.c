@@ -17,245 +17,11 @@
 #include <config.h>
 
 #include <gtk/gtk.h>
+#include "hpiview.h"
 #include "hview_service.h"
 #include "hview_callbacks.h"
-#include "hpiview.h"
+#include "voh.h"
 
-	/* Create menu bar */
-
-static GtkWidget *hview_get_menubar(HviewWidgetsT *w)
-{
-
-      GtkWidget		*mbar;
-      GtkWidget		*menu;
-      GtkWidget		*item,	*sitem;
-      GtkWidget		*image;
-
-      gchar		*label,	*image_file;
-      guint		type,	number_items;
-      gpointer		callback, data;
-      int		i;
-
-      HviewMenuItemFactoryT menu_items[] = {
-	{"_Session",	NULL, NULL, NULL, HVIEW_BRANCH},
-        {"_Quit",	"exit.png", hview_quit_call, w, HVIEW_ITEM},
-        {"_Edit",	NULL, NULL, NULL, HVIEW_BRANCH},
-        {"_Clear log",	"clear.png", hview_empty_log_call, w, HVIEW_ITEM},
-	{"_Action",	NULL, NULL, NULL, HVIEW_BRANCH},
-        {"_Discover",	"discover.png", hview_discover_call, w, HVIEW_ITEM},
-        {"_Load plugin", NULL, hview_load_plugin_call, w, HVIEW_ITEM},
-        {"_Unload plugin", NULL, hview_unload_plugin_call, w, HVIEW_ITEM},
-        {"_Help",	NULL, NULL, NULL, HVIEW_BRANCH},
-        {"_About",	"info.png", hview_about_call,	NULL, HVIEW_ITEM}
-      };
-
-      number_items = sizeof(menu_items)/sizeof(menu_items[0]);
-
-      mbar = gtk_menu_bar_new();
-
-      for (i = 0; i < number_items; i++) {
-	    type = menu_items[i].type;
-	    label = menu_items[i].label;
-	    image_file = menu_items[i].image_file;
-	    callback = menu_items[i].callback;
-	    data = menu_items[i].data;
-	    switch (menu_items[i].type) {
-	      case HVIEW_BRANCH:
-		  item = gtk_menu_item_new_with_mnemonic(label);
-		  gtk_container_add(GTK_CONTAINER(mbar), item);
-		  menu = gtk_menu_new();
-		  gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), menu);
-		  break;
-	      case HVIEW_ITEM:
-		  sitem = gtk_image_menu_item_new_with_mnemonic(label);
-		  if (image_file) {
-			image = create_pixmap(image_file);
-			gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM
-						            (sitem), image);
-		  }
-		  if (callback)
-			g_signal_connect(G_OBJECT(sitem), "activate",
-					 G_CALLBACK(callback),
-					 data);
-		  gtk_container_add(GTK_CONTAINER(menu), sitem);
-		  break;
-	    }
-      }
-      return mbar;
-}
-
-	/* Create toolbar */
-
-static GtkWidget *hview_get_toolbar(HviewWidgetsT *w)
-{
-      GtkWidget		*tbar;
-      GtkWidget		*iconw;
-      GtkToolItem	*titem;
-      GtkTooltips	*tooltips;
-
-      tbar = gtk_toolbar_new();
-
-      gtk_toolbar_set_orientation(GTK_TOOLBAR(tbar),
-				  GTK_ORIENTATION_HORIZONTAL);
-      gtk_toolbar_set_style(GTK_TOOLBAR(tbar), GTK_TOOLBAR_BOTH);
-
-      iconw = create_pixmap("close.png");
-      titem = gtk_tool_button_new(iconw, "Close");
-      g_signal_connect(G_OBJECT(titem), "clicked",
-		       G_CALLBACK(hview_quit_call),
-		       (gpointer) w);
-      gtk_toolbar_insert(GTK_TOOLBAR(tbar), titem, -1);
-
-      tooltips = gtk_tooltips_new();
-      gtk_tool_item_set_tooltip(titem, tooltips, "Close session", NULL);
-
-      iconw = create_pixmap("discover.png");
-      titem = gtk_tool_button_new(iconw, "Discover");
-      g_signal_connect(G_OBJECT(titem), "clicked",
-		       G_CALLBACK(hview_discover_call),
-		       (gpointer) w);
-      gtk_toolbar_insert(GTK_TOOLBAR(tbar), titem, -1);
-
-      tooltips = gtk_tooltips_new();
-      gtk_tool_item_set_tooltip(titem, tooltips, "Discover", NULL);
-
-      iconw = create_pixmap("viewmag.png");
-      w->rsitem = gtk_tool_button_new(iconw, "Read sensor");
-      g_signal_connect(G_OBJECT(w->rsitem), "clicked",
-		       G_CALLBACK(hview_read_sensor_call),
-		       (gpointer) w);
-      gtk_toolbar_insert(GTK_TOOLBAR(tbar), w->rsitem, -1);
-
-      tooltips = gtk_tooltips_new();
-      gtk_tool_item_set_tooltip(w->rsitem, tooltips, "Read Sensor", NULL);
-      gtk_widget_set_state(GTK_WIDGET(w->rsitem), GTK_STATE_INSENSITIVE);
-
-      return tbar;
-}
-
-	/* Create "tree window" */
-
-static GtkWidget *hview_get_tree_window(HviewWidgetsT *w)
-{
-      GtkWidget		*window;
-      GtkCellRenderer	*renderer;
-      GtkTreeViewColumn	*col;
-      GtkTreeSelection	*selection;
-
-      window = gtk_scrolled_window_new(NULL, NULL);
-      gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(window),
-				     GTK_POLICY_AUTOMATIC,
-				     GTK_POLICY_AUTOMATIC);
-      gtk_widget_set_size_request(GTK_WIDGET(window),
-				  HVIEW_TREE_WINDOW_WIDTH,
-				  HVIEW_TREE_WINDOW_HEIGHT);
-
-
-      w->tree_view = gtk_tree_view_new();
-
-      renderer = gtk_cell_renderer_text_new();
-      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->tree_view),
-						  -1,
-						  HVIEW_DOMAIN_COLUMN_TITLE,
-						  renderer,
-						  "text", 0, NULL);
-
-      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->tree_view), 0);
-      gtk_tree_view_column_set_clickable(col, TRUE);
-
-
-      g_signal_connect(G_OBJECT(col), "clicked",
-		       G_CALLBACK(hview_tree_column_activated_call),
-		       (gpointer) w);
-
-      g_signal_connect(G_OBJECT(w->tree_view), "row-activated",
-		       G_CALLBACK(hview_tree_row_activated_call),
-		       (gpointer) w);
-
-      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(w->tree_view));
-
-      g_signal_connect(G_OBJECT(selection), "changed",
-		       G_CALLBACK(hview_tree_row_selected_call),
-		       (gpointer) w);
-
-
-      gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(window),
-					    w->tree_view);
-      return window;
-}
-
-	/* Create "detail window" */
-
-static GtkWidget *hview_get_detail_window(HviewWidgetsT *w)
-{
-      GtkWidget		*window;
-      GtkCellRenderer	*renderer;
-      GtkTreeViewColumn	*col;
-
-      window = gtk_scrolled_window_new(NULL, NULL);
-      gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(window),
-				     GTK_POLICY_AUTOMATIC,
-				     GTK_POLICY_AUTOMATIC);
-
-      gtk_widget_set_size_request(GTK_WIDGET(window),
-				  HVIEW_DETAIL_WINDOW_WIDTH,
-				  HVIEW_DETAIL_WINDOW_HEIGHT);
-
-      w->detail_view = gtk_tree_view_new();
-      gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(w->detail_view),
-					FALSE);
-
-      renderer = gtk_cell_renderer_text_new();
-      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->detail_view),
-						  -1,
-						  NULL,
-						  renderer,
-						  "text", 0, NULL);
-      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->detail_view), 0);
-      gtk_tree_view_column_set_min_width(col, 150);
-      
-
-      renderer = gtk_cell_renderer_text_new();
-      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->detail_view),
-						  -1,
-						  NULL,
-						  renderer,
-						  "text", 1, NULL);
-      
-      gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(window),
-					    w->detail_view);
-      return window;
-}
-
-	/* Create "log window" */
-
-static GtkWidget *hview_get_log_window(HviewWidgetsT *w)
-{
-      GtkWidget		*window;
-      GtkTextBuffer	*buf;
-
-      window = gtk_scrolled_window_new(NULL, NULL);
-      gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(window),
-				     GTK_POLICY_AUTOMATIC,
-				     GTK_POLICY_AUTOMATIC);
-      
-      gtk_widget_set_size_request(GTK_WIDGET(window),
-				  HVIEW_LOG_WINDOW_WIDTH,
-				  HVIEW_LOG_WINDOW_HEIGHT);
-
-      w->log_view = gtk_text_view_new();
-
-      buf = gtk_text_buffer_new(NULL);
-      gtk_text_view_set_buffer(GTK_TEXT_VIEW(w->log_view), buf);
-      gtk_text_view_set_editable(GTK_TEXT_VIEW(w->log_view), FALSE);
-      gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(w->log_view), FALSE);
-      gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(window),
-					    w->log_view);
-
-      hview_print(w, HVIEW_NAME_VERSION);
-
-      return window;
-}
 
 	/* Initialization all Hpi View widgets */
 
@@ -264,10 +30,18 @@ static void hview_init(void)
       HviewWidgetsT	widgets;
       GtkWidget		*menubar;
       GtkWidget		*vpaned;
-      GtkWidget		*hpaned;
-      GtkWidget		*main_vbox;
+      GtkWidget		*hpaned,	*hpaned1;
+      GtkWidget		*main_vbox,	*hbox;
       GtkTreeModel	*domains;
-      gchar		err[100];
+      GtkWidget		*notebook,	*notebook1;
+      GtkWidget		*label;
+      GtkWidget		*separator;
+      gint		i;
+
+      for (i = 0; i < HVIEW_MAX_TAB_WINDOWS; i++) {
+	    widgets.tab_views[i].tree_view = NULL;
+	    widgets.tab_views[i].detail_view = NULL;
+      }
 
 // Create main window ---------------------------------------------------------
       widgets.main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -281,6 +55,7 @@ static void hview_init(void)
 //-----------------------------------------------------------------------------
 
       main_vbox = gtk_vbox_new(FALSE, 1);
+      hbox = gtk_hbox_new(FALSE, 1);
       gtk_container_set_border_width(GTK_CONTAINER(main_vbox), 1);
       gtk_container_add(GTK_CONTAINER(widgets.main_window), main_vbox);
 
@@ -290,32 +65,68 @@ static void hview_init(void)
       widgets.toolbar = hview_get_toolbar(&widgets);
       gtk_box_pack_start(GTK_BOX(main_vbox), widgets.toolbar, FALSE, FALSE, 0);
 
+      separator = gtk_hseparator_new();
+      gtk_box_pack_start(GTK_BOX(main_vbox), separator, FALSE, FALSE, 0);
+
+      widgets.vtoolbar = hview_get_vtoolbar(&widgets);
+      gtk_box_pack_start(GTK_BOX(hbox), widgets.vtoolbar, FALSE, FALSE, 0);
+
+      separator = gtk_vseparator_new();
+      gtk_box_pack_start(GTK_BOX(hbox), separator, FALSE, FALSE, 0);
+
       vpaned = gtk_vpaned_new();
+      hpaned1 = gtk_hpaned_new();
       hpaned = gtk_hpaned_new();
 
+      gtk_box_pack_start(GTK_BOX(hbox), hpaned1, TRUE, TRUE, 0);
+
+      widgets.domain_window = hview_get_domain_window(&widgets);
+
+      gtk_paned_add1(GTK_PANED(hpaned1), widgets.domain_window);
+
 // Create scrolled "tree window" and add it to horizontal paned window --------
-      widgets.tree_window = hview_get_tree_window(&widgets);
-      gtk_paned_add1(GTK_PANED(hpaned), widgets.tree_window);
+      widgets.tab_windows = gtk_notebook_new();
+      g_signal_connect(G_OBJECT(widgets.tab_windows), "switch-page",
+		       G_CALLBACK(hview_switch_page_call), &widgets);
+//      gtk_paned_add2(GTK_PANED(hpaned1), widgets.tab_windows);
+      gtk_notebook_set_scrollable(GTK_NOTEBOOK(widgets.tab_windows), TRUE);
+      gtk_notebook_set_tab_pos(GTK_NOTEBOOK(widgets.tab_windows), GTK_POS_TOP);
+//      widgets.tree_window = hview_get_tree_window(&widgets);
+//      gtk_paned_add1(GTK_PANED(hpaned), widgets.tree_window);
 //-----------------------------------------------------------------------------
 
 // Create scrolled "detail window" and add it to hpaned window ----------------
-      widgets.detail_window = hview_get_detail_window(&widgets);
-      gtk_paned_add2(GTK_PANED(hpaned), widgets.detail_window);
+//      widgets.detail_window = hview_get_detail_window(&widgets);
+//      gtk_paned_add2(GTK_PANED(hpaned), widgets.detail_window);
 //-----------------------------------------------------------------------------
 
-// Create scrolled "log window" and add it with hpaned window to vertical paned
+      gtk_paned_add2(GTK_PANED(hpaned1), widgets.tab_windows);
+//      gtk_notebook_append_page(GTK_NOTEBOOK(widgets.tab_windows), frame,
+//			       label);
+
+// Create tab windows ("log window", "event window") and add it with
+// hpaned window to vertical paned window -------------------------------------
+      notebook1 = gtk_notebook_new();
+      gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook1), GTK_POS_BOTTOM);
+      gtk_paned_add1(GTK_PANED(vpaned), hbox);
+      gtk_paned_add2(GTK_PANED(vpaned), notebook1);
       widgets.log_window = hview_get_log_window(&widgets);
-      gtk_paned_add1(GTK_PANED(vpaned), hpaned);
-      gtk_paned_add2(GTK_PANED(vpaned), widgets.log_window);
+      label = gtk_label_new("messages");
+      gtk_notebook_append_page(GTK_NOTEBOOK(notebook1), widgets.log_window,
+			       label);
+      widgets.event_window = hview_get_event_window(&widgets);
+      label = gtk_label_new("events");
+      gtk_notebook_append_page(GTK_NOTEBOOK(notebook1), widgets.event_window,
+			       label);
 //-----------------------------------------------------------------------------
 
       gtk_box_pack_start(GTK_BOX(main_vbox), vpaned, TRUE, TRUE, 0);
 
-// Create statusbar------------------------------------------------------------
+// Create statusbar -----------------------------------------------------------
       widgets.statusbar = gtk_statusbar_new();
       gtk_box_pack_start(GTK_BOX(main_vbox), widgets.statusbar,
 			 FALSE, FALSE, 0);
-      hview_statusbar_push(&widgets, "wellcome");
+      hview_statusbar_push(&widgets, "welcome");
 //-----------------------------------------------------------------------------
 
       gtk_widget_show_all(widgets.main_window);

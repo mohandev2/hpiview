@@ -696,6 +696,17 @@ const char *vohSensorUnits2Short(SaHpiSensorUnitsT unit)
       return ValueToString(units_map, unit, "%d");
 }
 
+const char *vohSensorValue2FullString(SaHpiSensorRecT *sensor,
+				     SaHpiSensorReadingT *sv)
+{
+      static char	value[100];
+
+      sprintf(value, "%s (%s)", vohSensorValue2String(sv),
+	      vohSensorUnits2Short(sensor->DataFormat.BaseUnits));
+
+      return value;
+}
+
 const char *vohSensorThdMask2String(SaHpiSensorThdMaskT mask)
 {
       static cMap mask_map[] = {
@@ -743,3 +754,4 @@ const char *vohSensorValue2String(SaHpiSensorReadingT *sv)
 
       return str;
 }
+

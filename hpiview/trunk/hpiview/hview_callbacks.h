@@ -22,6 +22,7 @@ void hview_quit_call(GtkWidget *widget, gpointer data);
 void hview_empty_log_call(GtkWidget *widget, gpointer data);
 void hview_load_plugin_call(GtkWidget *widget, gpointer data);
 void hview_unload_plugin_call(GtkWidget *widget, gpointer data);
+void hview_session_close_call(GtkWidget *widget, gpointer data);
 gint hview_discover_thread(gpointer data);
 void hview_discover_call(GtkWidget *widget, gpointer data);
 void hview_about_call(void);
@@ -31,9 +32,20 @@ void hview_tree_row_activated_call(GtkWidget *widget,
 					  GtkTreeIter *iter,
 					  GtkTreePath *path,
 					  gpointer data);
+void hview_domain_row_activated_call(GtkWidget *widget,
+				     GtkTreeIter *iter,
+				     GtkTreePath *path,
+				     gpointer data);
 void hview_tree_row_selected_call(GtkTreeSelection *selection,
 					 gpointer data);
 gint hview_readsensor_thread(gpointer data);
 void hview_read_sensor_call(GtkWidget *widget, gpointer data);
+void hview_show_hide_domain_call(GtkWidget *widget, gpointer data);
+void hview_open_session_call(GtkWidget *widget, gpointer data);
+void hview_switch_page_call(GtkNotebook *notebook,
+			    GtkNotebookPage *page,
+			    guint pagenum,
+			    gpointer data);
 
 #endif
+

@@ -28,7 +28,7 @@
 #define HVIEW_RESOURCE_COLUMN_TITLE	"\tResources"
 
 #define HVIEW_MAIN_WINDOW_WIDTH		700
-#define HVIEW_MAIN_WINDOW_HEIGHT	500
+#define HVIEW_MAIN_WINDOW_HEIGHT	600
 #define HVIEW_LOG_WINDOW_WIDTH		HVIEW_MAIN_WINDOW_WIDTH
 #define HVIEW_LOG_WINDOW_HEIGHT		150
 #define HVIEW_DETAIL_WINDOW_WIDTH	450
@@ -38,24 +38,31 @@
 #define HVIEW_ABOUT_WINDOW_WIDTH	200
 #define HVIEW_ABOUT_WINDOW_HEIGHT	100
 
-enum {
-      HVIEW_TREE_STORE_IS_DOMAINS = 1,
-      HVIEW_TREE_STORE_IS_RESOURCES,
-      HVIEW_TREE_STORE_IS_UNKNOWN,
-};
+#define HVIEW_MAX_TAB_WINDOWS		100
+
+
+typedef struct HviewTabs
+{
+      GtkWidget		*tree_view;
+      GtkWidget		*detail_view;
+} HviewTabsT;
 
 typedef struct HviewWidgets
 {
       GtkWidget		*main_window;
-      GtkWidget		*tree_window;
-      GtkWidget		*detail_window;
+      GtkWidget		*domain_window;
       GtkWidget		*log_window;
+      GtkWidget		*event_window;
       GtkWidget		*statusbar;
       GtkWidget		*toolbar;
+      GtkWidget		*vtoolbar;
 
-      GtkWidget		*tree_view;
-      GtkWidget		*detail_view;
+      GtkWidget		*tab_windows;
+      HviewTabsT	tab_views[HVIEW_MAX_TAB_WINDOWS];
+
+      GtkWidget		*domain_view;
       GtkWidget		*log_view;
+      GtkWidget		*event_view;
 
       GtkToolItem	*rsitem;
 } HviewWidgetsT;
@@ -75,11 +82,32 @@ typedef struct HviewMenuItemFactory
 } HviewMenuItemFactoryT;
 
 void add_pixmap_directory(const gchar *directory);
-static gchar* find_pixmap_file(const gchar *filename);
+gchar* find_pixmap_file(const gchar *filename);
 GtkWidget *create_pixmap(const gchar *filename);
 
-int hview_which_tree_store(GtkTreeViewColumn *column);
+GtkWidget *hview_get_log_window(HviewWidgetsT *w);
+GtkWidget *hview_get_event_window(HviewWidgetsT *w);
+GtkWidget *hview_get_domain_window(HviewWidgetsT *w);
+GtkWidget *hview_get_detail_window(HviewWidgetsT *w, gint page);
+GtkWidget *hview_get_tree_window(HviewWidgetsT *w, gint page);
+GtkWidget *hview_get_menubar(HviewWidgetsT *w);
+GtkWidget *hview_get_toolbar(HviewWidgetsT *w);
+GtkWidget *hview_get_vtoolbar(HviewWidgetsT *w);
+
 void hview_print(HviewWidgetsT *w, const gchar *string);
+void hview_event_print(HviewWidgetsT *w, const gchar *string);
 void hview_statusbar_push(HviewWidgetsT *w, const gchar *string);
 
+void hview_tree_cell_func(GtkTreeViewColumn	*col,
+			 GtkCellRenderer	*renderer,
+			 GtkTreeModel		*model,
+			 GtkTreeIter		*iter,
+			 gpointer		data);
+void hview_detail_cell_func(GtkTreeViewColumn	*col,
+			 GtkCellRenderer	*renderer,
+			 GtkTreeModel		*model,
+			 GtkTreeIter		*iter,
+			 gpointer		data);
+
 #endif
+
