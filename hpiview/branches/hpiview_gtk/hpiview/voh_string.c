@@ -1,5 +1,4 @@
 #include "voh_string.h"
-#include <glib.h>
 
 
 typedef struct cMapS
@@ -40,7 +39,7 @@ static const char *hpiBitMask2String( cMap *map, unsigned int value )
        if ( (map->m_value & value) == map->m_value )
           {
             if ( str[0] != 0 )
-                 strcat( str, " " );
+                 strcat( str, "\n" );
 
             strcat( str, map->m_name );
             mask |= map->m_value;
@@ -66,6 +65,14 @@ static const char *hpiBitMask2String( cMap *map, unsigned int value )
 	strcat(str, "none");
 
   return str;
+}
+
+const char *vohBoolean2String(gboolean b)
+{
+      if (b == TRUE)
+	    return "yes";
+      else
+	    return "no";
 }
 
 
@@ -223,6 +230,59 @@ const char *vohRdrType2String(SaHpiRdrTypeT type)
       return ValueToString(rdr_type_map, type, "%d");
 }
 
+const char *vohSensorType2String(SaHpiSensorTypeT type)
+{
+      static cMap s_type_map[] = {
+		{SAHPI_TEMPERATURE,		"temperature"},
+		{SAHPI_VOLTAGE,			"voltage"},
+		{SAHPI_CURRENT,			"current"},
+		{SAHPI_FAN,			"fan"},
+		{SAHPI_PHYSICAL_SECURITY,	"physical_security"},
+		{SAHPI_PLATFORM_VIOLATION,	"platform_violation"},
+		{SAHPI_PROCESSOR,		"processor"},
+		{SAHPI_POWER_SUPPLY,		"power_supply"},
+		{SAHPI_POWER_UNIT,		"power_unit"},
+		{SAHPI_COOLING_DEVICE,		"cooling_device"},
+		{SAHPI_OTHER_UNITS_BASED_SENSOR,"other_unit_based_sensor"},
+		{SAHPI_MEMORY,			"memory"},
+		{SAHPI_DRIVE_SLOT,		"drive_slot"},
+		{SAHPI_POST_MEMORY_RESIZE,	"post_memory_resize"},
+		{SAHPI_SYSTEM_FW_PROGRESS,	"system_fw_progress"},
+		{SAHPI_EVENT_LOGGING_DISABLED,	"event_logging_desabled"},
+		{SAHPI_RESERVED1,		"reserved1"},
+		{SAHPI_SYSTEM_EVENT,		"system_event"},
+		{SAHPI_CRITICAL_INTERRUPT,	"critical_interrupt"},
+		{SAHPI_BUTTON,			"button"},
+		{SAHPI_MODULE_BOARD,		"module_board"},
+		{SAHPI_MICROCONTROLLER_COPROCESSOR,
+		    				"microcontroller_coprocessor"},
+		{SAHPI_ADDIN_CARD,		"addin_card"},
+		{SAHPI_CHASSIS,			"chassis"},
+		{SAHPI_CHIP_SET,		"chip_set"},
+		{SAHPI_OTHER_FRU,		"FRU"},
+		{SAHPI_CABLE_INTERCONNECT,	"cable_interconnect"},
+		{SAHPI_TERMINATOR,		"terminator"},
+		{SAHPI_SYSTEM_BOOT_INITIATED,	"boot_initiated"},
+		{SAHPI_BOOT_ERROR,		"boot_error"},
+		{SAHPI_OS_BOOT,			"os_boot"},
+		{SAHPI_OS_CRITICAL_STOP,	"os_critical_stop"},
+		{SAHPI_SLOT_CONNECTOR,		"slot_connector"},
+		{SAHPI_SYSTEM_ACPI_POWER_STATE,	"system_acpi_power_state"},
+		{SAHPI_RESERVED2,		"reserved2"},
+		{SAHPI_PLATFORM_ALERT,		"platform_alert"},
+		{SAHPI_ENTITY_PRESENCE,		"entity_presence"},
+		{SAHPI_MONITOR_ASIC_IC,		"monitor_asic_ic"},
+		{SAHPI_LAN,			"LAN"},
+		{SAHPI_MANAGEMENT_SUBSYSTEM_HEALTH,
+		    				"management_subsystem_health"},
+		{SAHPI_BATTERY,			"battery"},
+		{SAHPI_OPERATIONAL,		"operational"},
+		{SAHPI_OEM_SENSOR,		"oem_sensor"},
+		{0, 0}
+      };
+      return ValueToString(s_type_map, type, "%d");
+}
+
 const char *vohCapabilities2String(SaHpiCapabilitiesT cf)
 {
       static cMap cap_map[] = {
@@ -258,4 +318,182 @@ const char *vohHsCapabilities2String(SaHpiHsCapabilitiesT cf)
       };
 
       return hpiBitMask2String(cap_map, cf);
+}
+
+const char *vohEventCategory2String(SaHpiEventCategoryT category)
+{
+      static cMap category_map[] = {
+		{SAHPI_EC_UNSPECIFIED,		"unspecified"},
+		{SAHPI_EC_THRESHOLD,		"threshold"},
+		{SAHPI_EC_USAGE,		"usage_state"},
+		{SAHPI_EC_STATE,		"generic_state"},
+		{SAHPI_EC_PRED_FAIL,		"predictive_fail"},
+		{SAHPI_EC_LIMIT,		"limit"},
+		{SAHPI_EC_PERFORMANCE,		"performance "},
+		{SAHPI_EC_SEVERITY,		"severity_indicating"},
+		{SAHPI_EC_PRESENCE,		"device_presence"},
+		{SAHPI_EC_ENABLE,		"device enabled"},
+		{SAHPI_EC_AVAILABILITY,		"availability_state"},
+		{SAHPI_EC_REDUNDANCY,		"redundancy_state"},
+		{SAHPI_EC_SENSOR_SPECIFIC,	"sensor-specific"},
+		{SAHPI_EC_GENERIC,		"OEM_defined"},
+		{0, 0}
+      };
+      return ValueToString(category_map, category, "%d");
+}
+
+const char *vohSensorEventCtrl2String(SaHpiSensorEventCtrlT ctrl)
+{
+      static cMap ctrl_map[] = {
+		{SAHPI_SEC_PER_EVENT,
+		    "event message control per event"},
+		{SAHPI_SEC_READ_ONLY_MASKS,
+		    "event control for entire sensor only"},
+		{SAHPI_SEC_READ_ONLY,
+		    "event control not supported"},
+		{0, 0}
+      };
+      return ValueToString(ctrl_map, ctrl, "%d");
+}
+
+const char *vohEventState2String(SaHpiEventStateT es,
+				 SaHpiEventCategoryT category)
+{
+      static cMap threshold_map[] = {
+		{SAHPI_ES_LOWER_MINOR,		"lower_minor"},
+		{SAHPI_ES_LOWER_MAJOR,		"lower_major"},
+		{SAHPI_ES_LOWER_CRIT,		"lower_crit"},
+		{SAHPI_ES_UPPER_MINOR,		"upper_minor"},
+		{SAHPI_ES_UPPER_MAJOR,		"upper_major"},
+		{SAHPI_ES_UPPER_CRIT,		"upper_crit"},
+		{0, 0}
+      };
+      static cMap usage_map[] = {
+		{SAHPI_ES_IDLE,			"idle"},
+		{SAHPI_ES_ACTIVE,		"active"},
+		{SAHPI_ES_BUSY,			"busy"},
+		{0, 0}
+      };
+      static cMap state_map[] = {
+		{SAHPI_ES_STATE_DEASSERTED,	"state_deasserted"},
+		{SAHPI_ES_STATE_ASSERTED,	"state_asserted"},
+		{0, 0}
+      };
+      static cMap pred_fail_map[] = {
+		{SAHPI_ES_PRED_FAILURE_DEASSERT,"pred_failure_deassert"},
+		{SAHPI_ES_PRED_FAILURE_ASSERT,	"pred_failure_assert"},
+		{0, 0}
+      };
+      static cMap limit_map[] = {
+		{SAHPI_ES_LIMIT_NOT_EXCEEDED,	"limit_not_exceeded"},
+		{SAHPI_ES_LIMIT_EXCEEDED,	"limit_exceeded"},
+		{0, 0}
+      };
+      static cMap performance_map[] = {
+		{SAHPI_ES_PERFORMANCE_MET,	"performance_met"},
+		{SAHPI_ES_PERFORMANCE_LAGS,	"performance_lags"},
+		{0, 0}
+      };
+      static cMap severity_map[] = {
+		{SAHPI_ES_OK,			"OK"},
+		{SAHPI_ES_MINOR_FROM_OK,	"minor_from_OK"},
+		{SAHPI_ES_MAJOR_FROM_LESS,	"minor_from_less"},
+		{SAHPI_ES_CRITICAL_FROM_LESS,	"critical_from_less"},
+		{SAHPI_ES_MINOR_FROM_MORE,	"minor_from_more"},
+		{SAHPI_ES_MAJOR_FROM_CRITICAL,	"major_from_critical"},
+		{SAHPI_ES_CRITICAL,		"critical"},
+		{SAHPI_ES_MONITOR,		"monitor"},
+		{SAHPI_ES_INFORMATIONAL,	"informational"},
+		{0, 0}
+      };
+      static cMap presence_map[] = {
+		{SAHPI_ES_DISABLED,		"disabled"},
+		{SAHPI_ES_ENABLED,		"enabled"},
+		{0, 0}
+      };
+      static cMap availability_map[] = {
+		{SAHPI_ES_RUNNING,		"running"},
+		{SAHPI_ES_TEST,			"test"},
+		{SAHPI_ES_POWER_OFF,		"power_off"},
+		{SAHPI_ES_ON_LINE,		"on_line"},
+		{SAHPI_ES_OFF_LINE,		"off_line"},
+		{SAHPI_ES_OFF_DUTY,		"off_duty"},
+		{SAHPI_ES_DEGRADED,		"degraded"},
+		{SAHPI_ES_POWER_SAVE,		"power_save"},
+		{SAHPI_ES_INSTALL_ERROR,	"install_error"},
+		{0, 0}
+      };
+      static cMap redundancy_map[] = {
+		{SAHPI_ES_FULLY_REDUNDANT,	"fully_redundant"},
+		{SAHPI_ES_REDUNDANCY_LOST,	"redundancy_lost"},
+		{SAHPI_ES_REDUNDANCY_DEGRADED,	"redundancy_degraded"},
+		{SAHPI_ES_REDUNDANCY_LOST_SUFFICIENT_RESOURCES,
+		    "redundancy_lost_sufficient_resources"},
+		{SAHPI_ES_NON_REDUNDANT_SUFFICIENT_RESOURCES,
+		    "non_redundant_sufficient_resources"},
+		{SAHPI_ES_NON_REDUNDANT_INSUFFICIENT_RESOURCES,
+		    "non_redundant_insufficient_resources"},
+		{SAHPI_ES_REDUNDANCY_DEGRADED_FROM_FULL,
+		    "redundancy_degraded_from_full"},
+		{SAHPI_ES_REDUNDANCY_DEGRADED_FROM_NON,
+		    "redundancy_degraded_from_non"},
+		{0, 0}
+      };
+      static cMap generic_sensor_spec_map[] = {
+		{SAHPI_ES_STATE_00,		"state_00"},
+		{SAHPI_ES_STATE_01,		"state_01"},
+		{SAHPI_ES_STATE_02,		"state_02"},
+		{SAHPI_ES_STATE_03,		"state_03"},
+		{SAHPI_ES_STATE_04,		"state_04"},
+		{SAHPI_ES_STATE_05,		"state_05"},
+		{SAHPI_ES_STATE_06,		"state_06"},
+		{SAHPI_ES_STATE_07,		"state_07"},
+		{SAHPI_ES_STATE_08,		"state_08"},
+		{SAHPI_ES_STATE_09,		"state_09"},
+		{SAHPI_ES_STATE_10,		"state_10"},
+		{SAHPI_ES_STATE_11,		"state_11"},
+		{SAHPI_ES_STATE_12,		"state_12"},
+		{SAHPI_ES_STATE_13,		"state_13"},
+		{SAHPI_ES_STATE_14,		"state_14"},
+		{0, 0}
+      };
+
+      switch (category) {
+	case SAHPI_EC_THRESHOLD:
+	    return hpiBitMask2String(threshold_map, es);
+
+	case SAHPI_EC_USAGE:
+	    return hpiBitMask2String(usage_map, es);
+
+	case SAHPI_EC_STATE:
+	    return hpiBitMask2String(state_map, es);
+
+	case SAHPI_EC_PRED_FAIL:
+	    return hpiBitMask2String(pred_fail_map, es);
+
+	case SAHPI_EC_LIMIT:
+	    return hpiBitMask2String(limit_map, es);
+
+	case SAHPI_EC_PERFORMANCE: 
+	    return hpiBitMask2String(performance_map, es);
+
+	case SAHPI_EC_SEVERITY:
+	    return hpiBitMask2String(severity_map, es);
+
+	case SAHPI_EC_PRESENCE:
+	    return hpiBitMask2String(presence_map, es);
+
+	case SAHPI_EC_AVAILABILITY:
+	    return hpiBitMask2String(availability_map, es);
+
+	case SAHPI_EC_REDUNDANCY:
+	    return hpiBitMask2String(redundancy_map, es);
+
+	case SAHPI_EC_GENERIC:
+	case SAHPI_EC_SENSOR_SPECIFIC:
+	    return hpiBitMask2String(generic_sensor_spec_map, es);
+
+	default:
+	    return "unspecified";
+      }
 }

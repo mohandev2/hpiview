@@ -10,7 +10,7 @@ enum {
 };
 
 enum {
-      VOH_ITER_IS_DOMAIN = 1,
+      VOH_ITER_IS_DOMAIN,
       VOH_ITER_IS_RPT,
       VOH_ITER_IS_RDR,
       VOH_ITER_IS_PATH,
@@ -23,7 +23,7 @@ GtkTreeModel *voh_list_resources(gchar *err);
 int voh_list_rdrs(GtkTreeStore *pstore, SaHpiResourceIdT rid, gchar *err);
 GtkTreeModel *voh_domain_info(gchar *err);
 GtkTreeModel *voh_resource_info(guint id, gchar *err);
-GtkTreeModel *voh_rdr_info(guint id, gchar *err);
+GtkTreeModel *voh_rdr_info(guint rid, guint type, guint id, gchar *err);
 
 void voh_add_resource(GtkTreeStore *pstore,
 		      SaHpiRptEntryT *rpt);
