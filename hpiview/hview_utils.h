@@ -1,6 +1,6 @@
 
 #define HUTIL_FIRST_ITER	0x1
-#define HUTIL_PARENT_NEEDED	0x2
+#define HUTIL_WITH_PARENT	0x2
 
 gboolean hutil_find_iter_by_id(GtkTreeModel *model, guint column_num,
 			       guint req_id, guint par_id,

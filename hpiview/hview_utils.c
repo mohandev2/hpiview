@@ -25,7 +25,7 @@ gboolean hutil_find_iter_by_id(GtkTreeModel *model, guint column_num,
 		gtk_tree_model_get(model, iter, column_num, &id, -1);
 
 		if (req_id == id) {
-			if (flag & HUTIL_PARENT_NEEDED) {
+			if (flag & HUTIL_WITH_PARENT) {
 				res = gtk_tree_model_iter_parent(model, &parent,
 								 iter);
 				if (res == TRUE) {
@@ -68,7 +68,7 @@ gboolean hutil_find_iter_by_name(GtkTreeModel *model, guint column_num,
 	if (req_name == NULL)
 		return FALSE;
 
-	if (flag & HUTIL_PARENT_NEEDED) {
+	if (flag & HUTIL_WITH_PARENT) {
 		if (par_name == NULL)
 			return FALSE;
 	}
@@ -81,7 +81,7 @@ gboolean hutil_find_iter_by_name(GtkTreeModel *model, guint column_num,
 		gtk_tree_model_get(model, iter, column_num, &name, -1);
 		if (strcmp(name, req_name) == 0) {
 			g_free(name);
-			if (flag & HUTIL_PARENT_NEEDED) {
+			if (flag & HUTIL_WITH_PARENT) {
 				res = gtk_tree_model_iter_parent(model, &parent,
 								 iter);
 				if (res == TRUE) {
