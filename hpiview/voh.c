@@ -1,4 +1,5 @@
 #include "voh.h"
+#include "hview_service.h"
 
 #define VOH_ERROR(err, str, rv) if (err) { \
 				    if (rv != -1) \
@@ -64,9 +65,11 @@ GtkTreeModel *voh_list_domains(gchar *err)
       GtkTreeStore	*pstore;
       GtkTreeIter	iter,	child;
 
-      pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
-				  G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+      pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, GDK_TYPE_PIXBUF,
+				  G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT,
+				  G_TYPE_UINT);
       gtk_tree_store_append(pstore, &iter, NULL);
+
       gtk_tree_store_set(pstore, &iter,
 			 VOH_LIST_COLUMN_NAME, "Domain #(single)",
 			 VOH_LIST_COLUMN_ID, SAHPI_UNSPECIFIED_DOMAIN_ID,
@@ -116,6 +119,8 @@ GtkTreeModel *voh_resource_info(guint id, gchar *err)
 {
       SaErrorT		rv;
       SaHpiRptEntryT	entry;
+      SaHpiResetActionT	reset;
+      SaHpiPowerStateT	power;
       GtkTreeStore	*info_store;
       GtkTreeIter	iter;
       gchar		name[1024];
@@ -162,6 +167,21 @@ GtkTreeModel *voh_resource_info(guint id, gchar *err)
 			 0, "ResourceTag",
 			 1, name,
 			 -1);
+
+      if (entry.ResourceCapabilities & SAHPI_CAPABILITY_RESET) {
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "Resource reset state",
+			       -1);
+	    
+	    rv = saHpiResourceResetStateGet(sessionid, (SaHpiResourceIdT)id,
+					    &reset);
+	    if (rv == SA_OK) {
+		  gtk_tree_store_set(info_store, &iter,
+			       1, vohResetAction2String(reset),
+			       -1);
+	    }
+      }
 
       return GTK_TREE_MODEL(info_store);
 }
@@ -432,8 +452,9 @@ GtkTreeModel *voh_list_resources(gchar *err)
       SaErrorT		ret;
       SaHpiRptEntryT	rptentry;
 
-      pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
-				  G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+      pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, GDK_TYPE_PIXBUF,
+				  G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT,
+				  G_TYPE_UINT);
 
       rptentryid = SAHPI_FIRST_ENTRY;
       while (rptentryid != SAHPI_LAST_ENTRY) {
@@ -469,11 +490,14 @@ int voh_list_rdrs(GtkTreeStore *pstore, SaHpiResourceIdT rid, gchar *err)
 void voh_add_resource(GtkTreeStore *pstore,
 		      SaHpiRptEntryT *rpt)
 {
+      SaErrorT		rv;
+      SaHpiPowerStateT	power;
       GtkTreeIter	iter,	parent,	*found_iter;
       gint		i;
       guint		id,	type;
       gboolean		res,	first = TRUE;
       SaHpiEntityPathT	entity_path = rpt->ResourceEntity;
+      guint		state = 0;
       gchar		path[100];
 
       for (i = 0; i < SAHPI_MAX_ENTITY_PATH; i++) {
@@ -516,11 +540,26 @@ void voh_add_resource(GtkTreeStore *pstore,
 		  type = VOH_ITER_IS_PATH;
 		  id = 0;
 	    }
-	    
+
+	    if (rpt->ResourceCapabilities & SAHPI_CAPABILITY_POWER) {
+		  rv = saHpiResourcePowerStateGet(sessionid,
+					(SaHpiResourceIdT)id, &power);
+		  if (rv == SA_OK) {
+			switch (power) {
+			  case SAHPI_POWER_ON:
+			      state |= VOH_ITER_RPT_STATE_POWER_ON;
+			      break;
+			  case SAHPI_POWER_OFF:
+			      state |= VOH_ITER_RPT_STATE_POWER_OFF;
+			      break;
+			}
+		  }
+	    }
 	    gtk_tree_store_set(pstore, &iter,
 			       VOH_LIST_COLUMN_NAME, path,
 			       VOH_LIST_COLUMN_ID, id,
 			       VOH_LIST_COLUMN_TYPE, type,
+			       VOH_LIST_COLUMN_STATE, state,
 			       -1);
 	   parent = iter;
 	   first = FALSE;
@@ -747,3 +786,169 @@ guint voh_get_sensor_state(SaHpiSensorRecT *sensor, SaHpiSensorReadingT *sv)
 }
 
 
+gboolean voh_get_power_state(guint id, GtkWidget *menu, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiPowerStateT	power;
+      GtkWidget		*sitem, *item;
+      
+      rv = saHpiResourcePowerStateGet(sessionid, (SaHpiResourceIdT)id, &power);
+      item = gtk_radio_menu_item_new_with_mnemonic(NULL, "none");
+//      gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+      sitem = gtk_radio_menu_item_new_with_mnemonic_from_widget(
+				GTK_RADIO_MENU_ITEM(item), "on");
+
+      gtk_container_add(GTK_CONTAINER(menu), sitem);
+      if (power == SAHPI_POWER_ON)
+	    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(sitem), TRUE);
+      sitem = gtk_radio_menu_item_new_with_mnemonic_from_widget(
+				GTK_RADIO_MENU_ITEM(item), "off");
+
+      gtk_check_menu_item_set_show_toggle(GTK_CHECK_MENU_ITEM(sitem), TRUE);
+      gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+      if (power == SAHPI_POWER_OFF)
+	    gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(sitem), TRUE);
+
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Power state getting failed", rv);
+	    return FALSE;
+      }
+      return TRUE;
+}
+
+gboolean voh_set_power_off(guint id, GtkTreeStore *store, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiPowerStateT	power;
+      GtkTreeIter	iter;
+      guint		state;
+      gboolean		res;
+
+      if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter)
+	  							== FALSE) {
+	    VOH_ERROR(err, "", -1);
+	    return FALSE;
+      }
+      res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
+			    id, &iter);
+      if (res == FALSE) {
+	    VOH_ERROR(err, "Power state setting failed (invalid resource id)",
+		      -1);
+	    return FALSE;
+      }
+      rv = saHpiResourcePowerStateSet(sessionid, (SaHpiResourceIdT)id,
+				      SAHPI_POWER_OFF);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Power state setting failed", rv);
+	    return FALSE;
+      }
+
+      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+			 VOH_LIST_COLUMN_STATE, &state,
+			 -1);
+
+      rv = saHpiResourcePowerStateGet(sessionid, (SaHpiResourceIdT)id, &power);
+      if (rv != SA_OK || power != SAHPI_POWER_OFF) {
+	    return TRUE;
+      }
+      state &=~VOH_ITER_RPT_STATE_POWER_ON;
+      state |= VOH_ITER_RPT_STATE_POWER_OFF;
+
+      gtk_tree_store_set(store, &iter,
+			 VOH_LIST_COLUMN_STATE, state,
+			 -1);
+      return TRUE;
+}
+
+gboolean voh_set_power_on(guint id, GtkTreeStore *store, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiPowerStateT	power;
+      GtkTreeIter	iter;
+      guint		state;
+      gboolean		res;
+
+      if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter)
+	  							== FALSE) {
+	    VOH_ERROR(err, "", -1);
+	    return FALSE;
+      }
+      res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
+			    id, &iter);
+      if (res == FALSE) {
+	    VOH_ERROR(err, "Power state setting failed (invalid resource id)",
+		      -1);
+	    return FALSE;
+      }
+      rv = saHpiResourcePowerStateSet(sessionid, (SaHpiResourceIdT)id,
+				      SAHPI_POWER_ON);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Power state setting failed", rv);
+	    return FALSE;
+      }
+
+
+      rv = saHpiResourcePowerStateGet(sessionid, (SaHpiResourceIdT)id, &power);
+      if (rv != SA_OK || power != SAHPI_POWER_ON) {
+	    return TRUE;
+      }
+      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+			 VOH_LIST_COLUMN_STATE, &state,
+			 -1);
+      state &=~VOH_ITER_RPT_STATE_POWER_OFF;
+      state |= VOH_ITER_RPT_STATE_POWER_ON;
+      gtk_tree_store_set(store, &iter,
+			 VOH_LIST_COLUMN_STATE, state,
+			 -1);
+      return TRUE;
+}
+
+gboolean voh_set_power_cycle(guint id, GtkTreeStore *store, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiPowerStateT	power;
+      GtkTreeIter	iter;
+      guint		state;
+      gboolean		res;
+
+      if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter)
+	  							== FALSE) {
+	    VOH_ERROR(err, "", -1);
+	    return FALSE;
+      }
+      res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
+			    id, &iter);
+      if (res == FALSE) {
+	    VOH_ERROR(err, "Power state setting failed (invalid resource id)",
+		      -1);
+	    return FALSE;
+      }
+      rv = saHpiResourcePowerStateSet(sessionid, (SaHpiResourceIdT)id,
+				      SAHPI_POWER_CYCLE);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Power state setting failed", rv);
+	    return FALSE;
+      }
+
+
+      rv = saHpiResourcePowerStateGet(sessionid, (SaHpiResourceIdT)id, &power);
+      if (rv != SA_OK) {
+	    return TRUE;
+      }
+      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+			 VOH_LIST_COLUMN_STATE, &state,
+			 -1);
+      if (power == SAHPI_POWER_ON) {
+	    state &=~VOH_ITER_RPT_STATE_POWER_OFF;
+	    state |= VOH_ITER_RPT_STATE_POWER_ON;
+      } else if (power == SAHPI_POWER_OFF) {
+	    state &=~VOH_ITER_RPT_STATE_POWER_ON;
+	    state |= VOH_ITER_RPT_STATE_POWER_OFF;
+      }
+      gtk_tree_store_set(store, &iter,
+			 VOH_LIST_COLUMN_STATE, state,
+			 -1);
+      return TRUE;
+}

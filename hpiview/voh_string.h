@@ -24,6 +24,8 @@ const char *vohSensorValue2FullString(SaHpiSensorRecT *sensor,
 				     SaHpiSensorReadingT *sv);
 const char *vohSensorThdMask2String(SaHpiSensorThdMaskT mask);
 const char *vohSensorValue2String(SaHpiSensorReadingT *sv);
+const char *vohResetAction2String(SaHpiResetActionT reset);
+const char *vohPowerState2String(SaHpiResetActionT state);
 
 #endif
 

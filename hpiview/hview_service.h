@@ -65,6 +65,8 @@ typedef struct HviewWidgets
       GtkWidget		*event_view;
 
       GtkToolItem	*rsitem;
+
+      guint		iter_id;
 } HviewWidgetsT;
 
 enum {
@@ -93,6 +95,9 @@ GtkWidget *hview_get_tree_window(HviewWidgetsT *w, gint page);
 GtkWidget *hview_get_menubar(HviewWidgetsT *w);
 GtkWidget *hview_get_toolbar(HviewWidgetsT *w);
 GtkWidget *hview_get_vtoolbar(HviewWidgetsT *w);
+GtkWidget *hview_get_tree_popup(GtkTreeModel *store,
+				GtkTreeIter *iter,
+				gpointer data);
 
 void hview_print(HviewWidgetsT *w, const gchar *string);
 void hview_event_print(HviewWidgetsT *w, const gchar *string);
@@ -103,11 +108,16 @@ void hview_tree_cell_func(GtkTreeViewColumn	*col,
 			 GtkTreeModel		*model,
 			 GtkTreeIter		*iter,
 			 gpointer		data);
+void hview_tree_pixbuf_cell_func(GtkTreeViewColumn	*col,
+				 GtkCellRenderer	*renderer,
+				 GtkTreeModel		*model,
+				 GtkTreeIter		*iter,
+				 gpointer		data);
 void hview_detail_cell_func(GtkTreeViewColumn	*col,
-			 GtkCellRenderer	*renderer,
-			 GtkTreeModel		*model,
-			 GtkTreeIter		*iter,
-			 gpointer		data);
+			    GtkCellRenderer	*renderer,
+			    GtkTreeModel	*model,
+			    GtkTreeIter		*iter,
+			    gpointer		data);
 
 #endif
 

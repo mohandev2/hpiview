@@ -755,3 +755,29 @@ const char *vohSensorValue2String(SaHpiSensorReadingT *sv)
       return str;
 }
 
+const char *
+vohResetAction2String(SaHpiResetActionT reset)
+{
+      static cMap ra_map[] = {
+		{SAHPI_COLD_RESET,		"cold reset"},
+		{SAHPI_WARM_RESET,		"warm reset"},
+		{SAHPI_RESET_ASSERT,		"assert"},
+		{SAHPI_RESET_DEASSERT,		"deassert"},
+		{0, 0}
+      };
+
+      return ValueToString(ra_map, reset, "%d");
+}
+
+const char *
+vohPowerState2String(SaHpiResetActionT state)
+{
+      static cMap ps_map[] = {
+		{SAHPI_POWER_OFF,		"off"},
+		{SAHPI_POWER_ON,		"on"},
+		{SAHPI_POWER_CYCLE,		"cycle"},
+		{0, 0}
+      };
+
+      return ValueToString(ps_map, state, "%d");
+}
