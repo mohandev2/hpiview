@@ -1,29 +1,28 @@
-####### kdevelop will overwrite this part!!! (begin)##########
+## Process this file with automake to produce Makefile.in
 
-SUBDIRS = HpiView 
+SUBDIRS = hpiview
 
-EXTRA_DIST = admin AUTHORS COPYING ChangeLog INSTALL README TODO hpiview.lsm 
+EXTRA_DIST = \
+	bootstrap
 
-####### kdevelop will overwrite this part!!! (end)############
-# not a GNU package. You can remove this line, if 
-# have all needed files, that a GNU package needs
-AUTOMAKE_OPTIONS = foreign 
-
-#$(top_srcdir)/configure.in: configure.in.in $(top_srcdir)/subdirs
-#	cd $(top_srcdir) && $(MAKE) -f admin/Makefile.common configure.in ;
-
-$(top_srcdir)/subdirs:
-	cd $(top_srcdir) && $(MAKE) -f admin/Makefile.common subdirs
-
-$(top_srcdir)/acinclude.m4: $(top_srcdir)/admin/acinclude.m4.in $(top_srcdir)/admin/libtool.m4.in
-	@cd $(top_srcdir) && cat admin/acinclude.m4.in admin/libtool.m4.in > acinclude.m4
-
-MAINTAINERCLEANFILES = subdirs configure acinclude.m4 aclocal.m4 config.h.in configure.files 
-
-package-messages:
-	$(MAKE) -f admin/Makefile.common package-messages
-	$(MAKE) -C po merge
+install-data-local:
+	@$(NORMAL_INSTALL)
+	if test -d $(srcdir)/pixmaps; then \
+	  $(mkinstalldirs) $(DESTDIR)$(pkgdatadir)/pixmaps; \
+	  for pixmap in $(srcdir)/pixmaps/*; do \
+	    if test -f $$pixmap; then \
+	      $(INSTALL_DATA) $$pixmap $(DESTDIR)$(pkgdatadir)/pixmaps; \
+	    fi \
+	  done \
+	fi
 
 dist-hook:
-	cd $(top_distdir) && perl admin/am_edit -padmin
-	cd $(top_distdir) && $(MAKE) -f admin/Makefile.common subdirs
+	if test -d pixmaps; then \
+	  mkdir $(distdir)/pixmaps; \
+	  for pixmap in pixmaps/*; do \
+	    if test -f $$pixmap; then \
+	      cp -p $$pixmap $(distdir)/pixmaps; \
+	    fi \
+	  done \
+	fi
+
