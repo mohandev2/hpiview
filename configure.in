@@ -65,7 +65,6 @@ fi
 CXXFLAGS="$CXXFLAGS $openhpi_includes"
 LIBS="$LIBS $openhpi_libs"
 
-
 all_includes="$all_includes $USER_INCLUDES"
 all_libraries="$all_libraries $USER_LDFLAGS"
 

@@ -164,7 +164,7 @@ cHpiResourceRoot::createEntityPath( const SaHpiEntityPathT &path, int max )
 
       const SaHpiEntityT *e = &path.Entry[idx];
 
-      if ( e->EntityType == SAHPI_ENT_UNSPECIFIED )
+      if ( e->EntityType == SAHPI_ENT_ROOT )
            continue;
 
       QString str = QString( "%1 %2" )

@@ -10,7 +10,8 @@ all:
 	   exit 1 ;\
 	fi
 	$(MAKE) -f admin/Makefile.common 
-	./configure --enable-debug=full
+	./configure --enable-debug=full --enable-openhpiclient
 	make
 
 .SILENT:
+
