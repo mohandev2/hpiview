@@ -78,6 +78,7 @@ typedef struct HviewSenEventTabT {
 typedef struct HviewSenThrTab {
 	gint		tab_page_num;
 	GtkWidget	*info_box;
+	GList		*thrlist;
 } HviewSenThrTabT;
 
 typedef struct HviewSenDialogWidgets {
