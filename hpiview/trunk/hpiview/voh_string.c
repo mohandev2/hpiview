@@ -112,9 +112,9 @@ static const char *hpiBitMask2String( cMap *map, unsigned int value )
 const char *vohBoolean2String(gboolean b)
 {
       if (b == TRUE)
-	    return "yes";
+	    return "true";
       else
-	    return "no";
+	    return "false";
 }
 
 const char *vohTime2String(SaHpiTimeT time)
@@ -1153,5 +1153,42 @@ vohSwEventType2String(SaHpiSwEventTypeT evtype)
       };
 
       return ValueToString(evtype_map, evtype, "%d");
+}
+
+const char *vohIdrAreaType2String(SaHpiIdrAreaTypeT type)
+{
+      static cMap type_map[] = {
+		{SAHPI_IDR_AREATYPE_INTERNAL_USE,	"Internal use"},
+		{SAHPI_IDR_AREATYPE_CHASSIS_INFO,	"Chassis info"},
+		{SAHPI_IDR_AREATYPE_BOARD_INFO,		"Board info"},
+		{SAHPI_IDR_AREATYPE_PRODUCT_INFO,	"Product info"},
+		{SAHPI_IDR_AREATYPE_OEM,		"Oem area"},
+		{SAHPI_IDR_AREATYPE_UNSPECIFIED,	"Unspecified"},
+		{0, 0}
+      };
+
+      return ValueToString(type_map, type, "%d");
+
+}
+
+const char *vohIdrFieldType2String(SaHpiIdrFieldTypeT type)
+{
+      static cMap type_map[] = {
+		{SAHPI_IDR_FIELDTYPE_CHASSIS_TYPE,	"Chassis type"},
+		{SAHPI_IDR_FIELDTYPE_MFG_DATETIME,	"MFG data time"},
+		{SAHPI_IDR_FIELDTYPE_MANUFACTURER,	"Manufacturer"},
+		{SAHPI_IDR_FIELDTYPE_PRODUCT_NAME,	"Product name"},
+		{SAHPI_IDR_FIELDTYPE_PRODUCT_VERSION,	"Product version"},
+		{SAHPI_IDR_FIELDTYPE_SERIAL_NUMBER,	"Serial number"},
+		{SAHPI_IDR_FIELDTYPE_PART_NUMBER,	"Part number"},
+		{SAHPI_IDR_FIELDTYPE_FILE_ID,		"File Id"},
+		{SAHPI_IDR_FIELDTYPE_ASSET_TAG,		"Asset tag"},
+		{SAHPI_IDR_FIELDTYPE_CUSTOM,		"Custom"},
+		{SAHPI_IDR_FIELDTYPE_UNSPECIFIED,	"Unspecified"},
+		{0, 0}
+      };
+
+      return ValueToString(type_map, type, "%d");
+
 }
 

@@ -37,6 +37,8 @@ const char *vohResourceEventType2String(SaHpiResourceEventTypeT evtype);
 const char *vohDomainEventType2String(SaHpiDomainEventTypeT evtype);
 const char *vohSwEventType2String(SaHpiSwEventTypeT evtype);
 
+const char *vohIdrAreaType2String(SaHpiIdrAreaTypeT type);
+const char *vohIdrFieldType2String(SaHpiIdrFieldTypeT type);
 
 GList *vohEventState2List(SaHpiEventCategoryT category);
 GList *vohSensorThdMask2List(void);

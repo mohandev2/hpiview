@@ -176,5 +176,16 @@ gboolean voh_set_sensor_thresholds(guint sessionid,
 				   GList *thrlist,
 				   gchar *err);
 
+gboolean voh_get_inventory_info(guint sessionid,
+				guint resourceid,
+				guint rdrentryid,
+				GList **info,
+				gchar *err);
+gboolean voh_get_idr_area_with_field(guint sessionid,
+				      guint resourceid,
+				      guint rdrentryid,
+				      GList **areas,
+				      gchar *err);
+
 #endif /* __VOH_H__ */
 
