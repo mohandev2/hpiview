@@ -97,6 +97,14 @@ typedef struct HviewSenEventMasksWidgets {
 	GList			*deassert_event_mask;
 } HviewSenEventMasksWidgetsT;
 
+typedef struct HviewInvDialogWidgets {
+	HviewWidgetsT		*parent_widgets;
+	GtkWidget		*dialog_window;
+	GtkWidget		*info_box;
+	GtkWidget		*areas_box;
+} HviewInvDialogWidgetsT;
+
+
 
 void hview_print(HviewWidgetsT *w, const gchar *string);
 void hview_event_print(HviewWidgetsT *w, const gchar *string);
