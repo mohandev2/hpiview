@@ -1,0 +1,67 @@
+%define prefix /usr/local
+
+Name: hpiview
+Summary: %{name} - GTK Front end client for OpenHPI (HPI)
+Version: @VERSION@
+Release: 1
+License: BSD
+URL: http://openhpi.sourceforge.net
+Group: Utilities
+Vendor: OpenHPI Project
+Packager: TariqX
+Source: %{name}-@VERSION@.tar.gz
+Buildroot: /var/tmp/HpiView-root
+BuildRequires: glib2-devel
+Summary: A GTK Front end to OpenHPI
+Group: Utilities
+AutoReq: yes
+Requires: libc.so.6
+
+%description 
+This is a GTK based GUI developed part of OpenHPI.
+
+###################################################
+%prep
+###################################################
+
+###################################################
+%setup
+###################################################
+
+###################################################
+%build
+###################################################
+./configure 
+make
+
+###################################################
+%install
+###################################################
+if
+  [ ! -z "${RPM_BUILD_ROOT}"  -a "${RPM_BUILD_ROOT}" != "/" ]
+then
+  rm -rf $RPM_BUILD_ROOT
+fi
+make DESTDIR=$RPM_BUILD_ROOT install
+
+#################################################
+%post
+###################################################
+
+###################################################
+%files
+###################################################
+%defattr(-,root,root)
+%{prefix}/bin/hpiview
+%{prefix}/share/hpiview/
+
+###################################################
+%clean
+###################################################
+if
+    [ -z "${RPM_BUILD_ROOT}"  -a "${RPM_BUILD_ROOT}" != "/" ]
+then
+    rm -rf $RPM_BUILD_ROOT
+fi
+rm -rf $RPM_BUILD_DIR/hpiview-@VERSION@
+
