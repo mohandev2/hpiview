@@ -2,6 +2,7 @@
 #ifndef __VOH_H__
 #define __VOH_H__
 
+#include "voh_types.h"
 
 enum {
       VOH_LIST_COLUMN_NAME = 0,
@@ -49,11 +50,13 @@ enum {
 #define VOH_ITER_RPT_STATE_RESET_ASSERT		0x4
 #define VOH_ITER_RPT_STATE_RESET_DEASSERT	0x8
 
-#define VOH_ITER_CAPABILITY_UNSPECIFIED	0x0
+#define VOH_ITER_CAPABILITY_UNSPECIFIED		0x0
 #define VOH_ITER_CAPABILITY_POWER		0x1
 #define VOH_ITER_CAPABILITY_RESET		0x2
 
-      
+#define VOH_ITER_SENSOR_CAPABILITY_UNSPECIFIED	0x0
+#define VOH_ITER_SENSOR_CAPABILITY_THRESHOLD	0x1
+
 guint voh_open_session(guint domainid, gchar *err);
 gboolean voh_discover(guint sessionid, gchar *err);
 gboolean voh_session_close(guint domainid, gchar *err);
@@ -133,6 +136,34 @@ GList *voh_get_sensor_event_info(guint sessionid,
 				 guint resourceid,
 				 guint rdrentryid,
 				 gchar *err);
+
+gboolean voh_get_sensor_assert_event_mask(guint sessionid,
+					  guint resourceid,
+					  guint rdrentryid,
+					  GList **evlist,
+					  gchar *err);
+gboolean voh_get_sensor_deassert_event_mask(guint sessionid,
+					    guint resourceid,
+					    guint rdrentryid,
+					    GList **evlist,
+					    gchar *err);
+gboolean voh_set_sensor_event_masks(guint sessionid,
+				    guint resourceid,
+				    guint rdrentryid,
+				    GList *assert_mask,
+				    GList *deassert_mask,
+				    gchar *err);
+
+gboolean voh_get_sensor_event_states_supported(guint sessionid,
+					       guint resourceid,
+					       guint rdrentryid,
+					       GList **evlist,
+					       gchar *err);
+
+GList *voh_get_sensor_threshold_info(guint sessionid,
+				     guint resourceid,
+				     guint rdrentryid,
+				     gchar *err);
 
 #endif /* __VOH_H__ */
 

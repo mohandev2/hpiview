@@ -199,10 +199,10 @@ gint hview_entity_get_info_thread(gpointer data)
 
       page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
       if (page < 0)
-	    return;
+	    return FALSE;
       if ((tview = w->tab_views[page].resource_view) == NULL ||
 	  (dview = w->tab_views[page].detail_view) == NULL)
-	    return;
+	    return FALSE;
       sid = w->tab_views[page].sessionid;
 
       selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
@@ -419,8 +419,6 @@ void hview_switch_page_call(GtkNotebook *notebook,
       GtkTooltips		*tooltips;
       GtkWidget			*image;
 
-      if (pagenum < 0)
-	    return;
       image = gtk_tool_button_get_icon_widget(GTK_TOOL_BUTTON(w->subev_item));
       tooltips = gtk_tooltips_new();
       if (w->tab_views[pagenum].event_subscribed == FALSE) {
@@ -1332,7 +1330,7 @@ void hview_sensor_settings_ok_response(gpointer data)
 	}
 
 	status = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-							dw->enable_status));
+						dw->general_tab.enable_status));
 	res = voh_set_sensor_enable(sid, pid, id, status, err);
 
 	if (res == FALSE) {
@@ -1340,7 +1338,7 @@ void hview_sensor_settings_ok_response(gpointer data)
 	}
 
 	status = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
-						dw->event_enable_status));
+					dw->event_tab.event_enable_status));
 	res = voh_set_sensor_event_enable(sid, pid, id, status, err);
 
 	if (res == FALSE) {
@@ -1360,8 +1358,10 @@ void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
 	gint			page;
 	GtkWidget		*tview;
 	guint			id,		pid,	sid;
+	guint			capability;
 	GtkWidget		*label;
 	GtkWidget		*hbox;
+	GtkWidget		*but;
 	GList			*sen_info;
 	gboolean		status;
 	gint			res;
@@ -1386,7 +1386,8 @@ void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
 		return;
 
 	gtk_tree_model_get(model, &parent, VOH_LIST_COLUMN_ID, &pid, -1);
-	gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+	gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id,
+			   VOH_LIST_COLUMN_CAPABILITY, &capability, -1);
 
 	res = voh_check_rdr_presence(sid, pid, id, err);
 	if (res == FALSE) {
@@ -1404,8 +1405,9 @@ void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
 		} else {
 			while (sen_info != NULL) {
 				hbox = gtk_hbox_new(FALSE, 10);
-				gtk_box_pack_start(GTK_BOX(dw.info_box),
-						   hbox, FALSE, FALSE, 2);
+				gtk_box_pack_start(GTK_BOX(
+						dw.general_tab.info_box),
+						hbox, FALSE, FALSE, 2);
 				label = gtk_label_new(sen_info->data);
 				gtk_box_pack_start(GTK_BOX(hbox),
 						   label, FALSE, FALSE, 10);
@@ -1416,7 +1418,8 @@ void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
 		res = voh_get_sensor_enable(sid, pid, id, &status, err);
 		if (res != FALSE) {
 			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(
-						dw.enable_status), status);
+						dw.general_tab.enable_status),
+						status);
 		} else {
 			hview_print(w, err);
 		}
@@ -1428,8 +1431,9 @@ void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
 		} else {
 			while (sen_info != NULL) {
 				hbox = gtk_hbox_new(FALSE, 10);
-				gtk_box_pack_start(GTK_BOX(dw.event_info_box),
-						   hbox, FALSE, FALSE, 2);
+				gtk_box_pack_start(GTK_BOX(
+						dw.event_tab.event_info_box),
+						hbox, FALSE, FALSE, 2);
 				label = gtk_label_new(sen_info->data);
 				gtk_box_pack_start(GTK_BOX(hbox),
 						   label, FALSE, FALSE, 10);
@@ -1440,10 +1444,43 @@ void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
 		res = voh_get_sensor_event_enable(sid, pid, id, &status, err);
 		if (res != FALSE) {
 			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(
-					dw.event_enable_status), status);
+					dw.event_tab.event_enable_status),
+					status);
 		} else {
 			hview_print(w, err);
 		}
+	}
+
+	if (capability & VOH_ITER_SENSOR_CAPABILITY_THRESHOLD) {
+
+		sen_info = voh_get_sensor_threshold_info(sid, pid, id, err);
+
+		if (sen_info == NULL) {
+			hview_print(w, err);
+			label = gtk_label_new("UNKNOWN");
+			gtk_box_pack_start(GTK_BOX(dw.threshold_tab.info_box),
+					   label, TRUE, TRUE, 10);
+		} else {
+			while (sen_info != NULL) {
+				hbox = gtk_hbox_new(FALSE, 10);
+				gtk_box_pack_start(GTK_BOX(
+						dw.threshold_tab.info_box),
+						hbox, FALSE, FALSE, 2);
+				label = gtk_label_new(sen_info->data);
+				gtk_box_pack_start(GTK_BOX(hbox),
+						   label, FALSE, FALSE, 10);
+
+/*				but = gtk_spin_button_new_with_range(-10.2,
+								     10.2, 0.1);
+				gtk_box_pack_start(GTK_BOX(hbox), but,
+						   TRUE, FALSE, 10); */
+
+				sen_info = sen_info->next;
+			}
+		}
+	} else {
+		gtk_notebook_remove_page(GTK_NOTEBOOK(dw.notebook),
+					 dw.threshold_tab.tab_page_num);
 	}
 
 
@@ -1461,3 +1498,251 @@ void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
 	gtk_widget_destroy(dialog_window);
 }
 
+void hview_sensor_masks_apply_response(gpointer data)
+{
+	HviewSenEventMasksWidgetsT	*mdw = (HviewSenEventMasksWidgetsT *)
+									data;
+	HviewSenDialogWidgetsT		*dw = mdw->parent_widgets;
+	HviewWidgetsT			*w = dw->parent_widgets;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter,		parent;
+	GtkTreeSelection		*selection;
+	gint				page;
+	GtkWidget			*tview;
+	GList				*assert_event_mask;
+	GList				*deassert_event_mask;
+	VohEventStateT			*evst;
+	guint				id,		pid,	sid;
+	gboolean			res,		status;
+	gchar				err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		if (!gtk_tree_model_iter_parent(model, &parent, &iter))
+			return;
+		gtk_tree_model_get(model, &parent, VOH_LIST_COLUMN_ID,
+				   &pid, -1);
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+	} else {
+		return;
+	}
+
+
+	assert_event_mask = mdw->assert_event_mask;
+	while (assert_event_mask != NULL) {
+		evst = (VohEventStateT *) assert_event_mask->data;
+		status = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
+								evst->data));
+		evst->active = status;
+		assert_event_mask = assert_event_mask->next;
+	}
+
+	deassert_event_mask = mdw->deassert_event_mask;
+	while (deassert_event_mask != NULL) {
+		evst = (VohEventStateT *) deassert_event_mask->data;
+		status = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
+								evst->data));
+		evst->active = status;
+		deassert_event_mask = deassert_event_mask->next;
+	}	
+
+	res = voh_set_sensor_event_masks(sid, pid, id,
+					 mdw->assert_event_mask,
+					 mdw->deassert_event_mask,
+					 err);
+
+	if (res == FALSE) {
+		hview_print(w, err);
+	}
+
+}
+
+void hview_sensor_assert_mask_set_call(GtkWidget *widget, gpointer data)
+{
+	HviewSenDialogWidgetsT		*dw = (HviewSenDialogWidgetsT *) data;
+	HviewWidgetsT			*w = dw->parent_widgets;
+	HviewSenEventMasksWidgetsT	mdw;
+	GtkWidget			*dialog;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter,		parent;
+	GtkTreeSelection		*selection;
+	gint				page;
+	GtkWidget			*tview;
+	GtkWidget			*but;
+	GList				*mask,	*ev_supported;
+	VohEventStateT			*evst,	*evsup;
+	guint				id,		pid,	sid;
+	gint				res;
+	gchar				err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+	res = gtk_tree_selection_get_selected(selection, &model, &iter);
+	if (res == FALSE) {
+		return;
+	}
+
+	if (!gtk_tree_model_iter_parent(model, &parent, &iter))
+		return;
+
+	gtk_tree_model_get(model, &parent, VOH_LIST_COLUMN_ID, &pid, -1);
+	gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+	mdw.parent_widgets = dw;
+	dialog = hview_get_sensor_assert_mask_window(&mdw);
+	mdw.dialog_window = dialog;
+
+	res = voh_get_sensor_assert_event_mask(sid, pid, id, &mask, err);
+
+	mdw.assert_event_mask = mask;
+	mdw.deassert_event_mask = NULL;
+
+	if (res == FALSE) {
+		hview_print(w, err);
+		gtk_widget_destroy(dialog);
+		return;
+	} else {
+		res = voh_get_sensor_event_states_supported(sid, pid, id,
+							    &ev_supported, err);
+		if (res == FALSE) {
+			hview_print(w, err);
+			gtk_widget_destroy(dialog);
+			return;
+		}
+		while (mask != NULL) {
+			evst = (VohEventStateT *) mask->data;
+			evsup = (VohEventStateT *) ev_supported->data;
+			but = gtk_check_button_new_with_label(evst->string);
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(but),
+						     evst->active);
+			gtk_widget_set_sensitive(but, evsup->active);
+			gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
+					   but, TRUE, FALSE, 4);
+			evst->data = (gpointer) but;
+			mask = mask->next;
+			ev_supported = ev_supported->next;
+		}
+
+	}
+
+	gtk_widget_show_all(dialog);
+
+	res = gtk_dialog_run(GTK_DIALOG(dialog));
+	switch (res) {
+	case GTK_RESPONSE_APPLY:
+		hview_sensor_masks_apply_response((gpointer) &mdw);
+		break;
+	default:
+		break;
+	}
+
+	gtk_widget_destroy(dialog);
+}
+
+void hview_sensor_deassert_mask_set_call(GtkWidget *widget, gpointer data)
+{
+	HviewSenDialogWidgetsT		*dw = (HviewSenDialogWidgetsT *) data;
+	HviewWidgetsT			*w = dw->parent_widgets;
+	HviewSenEventMasksWidgetsT	mdw;
+	GtkWidget			*dialog;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter,		parent;
+	GtkTreeSelection		*selection;
+	gint				page;
+	GtkWidget			*tview;
+	GtkWidget			*but;
+	GList				*mask,	*ev_supported;
+	VohEventStateT			*evst,	*evsup;
+	guint				id,		pid,	sid;
+	gint				res;
+	gchar				err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+	res = gtk_tree_selection_get_selected(selection, &model, &iter);
+	if (res == FALSE) {
+		return;
+	}
+
+	if (!gtk_tree_model_iter_parent(model, &parent, &iter))
+		return;
+
+	gtk_tree_model_get(model, &parent, VOH_LIST_COLUMN_ID, &pid, -1);
+	gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+	mdw.parent_widgets = dw;
+	dialog = hview_get_sensor_deassert_mask_window(&mdw);
+	mdw.dialog_window = dialog;
+
+	res = voh_get_sensor_deassert_event_mask(sid, pid, id, &mask, err);
+
+	mdw.assert_event_mask = NULL;
+	mdw.deassert_event_mask = mask;
+
+	if (res == FALSE) {
+		hview_print(w, err);
+		gtk_widget_destroy(dialog);
+		return;
+	} else {
+		res = voh_get_sensor_event_states_supported(sid, pid, id,
+							    &ev_supported, err);
+		if (res == FALSE) {
+			hview_print(w, err);
+			gtk_widget_destroy(dialog);
+			return;
+		}
+		while (mask != NULL) {
+			evst = (VohEventStateT *) mask->data;
+			evsup = (VohEventStateT *) ev_supported->data;
+			but = gtk_check_button_new_with_label(evst->string);
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(but),
+						     evst->active);
+			gtk_widget_set_sensitive(but, evsup->active);
+			gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
+					   but, TRUE, FALSE, 4);
+			evst->data = (gpointer) but;
+			mask = mask->next;
+			ev_supported = ev_supported->next;
+		}
+
+	}
+
+	gtk_widget_show_all(dialog);
+
+	res = gtk_dialog_run(GTK_DIALOG(dialog));
+	switch (res) {
+	case GTK_RESPONSE_APPLY:
+		hview_sensor_masks_apply_response((gpointer) &mdw);
+		break;
+	default:
+		break;
+	}
+
+	gtk_widget_destroy(dialog);
+}

@@ -63,14 +63,39 @@ typedef struct HviewRptDialogWidgets {
 	GtkWidget	*tag_entry;
 } HviewRptDialogWidgetsT;
 
-typedef struct HviewSenDialogWidgets {
-	HviewWidgetsT	*parent_widgets;
-	GtkWidget	*dialog_window;
+typedef struct HviewSenGeneralTab {
+	gint		tab_page_num;
 	GtkWidget	*info_box;
 	GtkWidget	*enable_status;
+} HviewSenGeneralTabT;
+
+typedef struct HviewSenEventTabT {
+	gint		tab_page_num;
 	GtkWidget	*event_info_box;
 	GtkWidget	*event_enable_status;
+} HviewSenEventTabT;
+
+typedef struct HviewSenThrTab {
+	gint		tab_page_num;
+	GtkWidget	*info_box;
+} HviewSenThrTabT;
+
+typedef struct HviewSenDialogWidgets {
+	HviewWidgetsT		*parent_widgets;
+	GtkWidget		*dialog_window;
+	GtkWidget		*notebook;
+	HviewSenGeneralTabT	general_tab;
+	HviewSenEventTabT	event_tab;
+	HviewSenThrTabT		threshold_tab;
 } HviewSenDialogWidgetsT;
+
+typedef struct HviewSenEventMasksWidgets {
+	HviewSenDialogWidgetsT	*parent_widgets;
+	GtkWidget		*dialog_window;
+	GList			*assert_event_mask;
+	GList			*deassert_event_mask;
+} HviewSenEventMasksWidgetsT;
+
 
 void hview_print(HviewWidgetsT *w, const gchar *string);
 void hview_event_print(HviewWidgetsT *w, const gchar *string);

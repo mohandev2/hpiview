@@ -260,17 +260,19 @@ static void voh_add_resource(GtkTreeStore *pstore, guint sessionid,
 
 static void voh_add_rdr(GtkTreeStore *pstore, SaHpiRdrT *rdr, guint resourceid)
 {
-      gboolean		res;
-      GtkTreeIter	iter,	parent;
-      SaHpiTextBufferT	strptr;
-      guint		type,	state = 0;
-      gchar		name[100];
+      gboolean			res;
+      GtkTreeIter		iter,	parent;
+      SaHpiRdrTypeUnionT	*un;
+      SaHpiTextBufferT		strptr;
+      guint			type,	state = 0,	capability = 0;
+      gchar			name[100];
 
       res = hutil_find_iter_by_id(GTK_TREE_MODEL(pstore), VOH_LIST_COLUMN_ID,
 			          resourceid, 0, &parent, HUTIL_FIRST_ITER);
       if (res != FALSE) {
 	    strptr = rdr->IdString;
 	    fixstr(&strptr, name);
+	    un = &rdr->RdrTypeUnion;
 	    switch (rdr->RdrType) {
 	      case SAHPI_CTRL_RDR:
 		  type = VOH_ITER_IS_CONTROL;
@@ -278,6 +280,10 @@ static void voh_add_rdr(GtkTreeStore *pstore, SaHpiRdrT *rdr, guint resourceid)
 	      case SAHPI_SENSOR_RDR:
 		  type = VOH_ITER_IS_SENSOR;
 		  state = VOH_ITER_SENSOR_STATE_UNSPECIFIED;
+		  capability = VOH_ITER_SENSOR_CAPABILITY_UNSPECIFIED;
+		  if(un->SensorRec.ThresholdDefn.IsAccessible == TRUE) {
+			  capability |= VOH_ITER_SENSOR_CAPABILITY_THRESHOLD;
+		  }
 		  break;
 	      case SAHPI_INVENTORY_RDR:
 		  type = VOH_ITER_IS_INVENTORY;
@@ -299,6 +305,7 @@ static void voh_add_rdr(GtkTreeStore *pstore, SaHpiRdrT *rdr, guint resourceid)
 			       VOH_LIST_COLUMN_ID, (guint)rdr->RecordId,
 			       VOH_LIST_COLUMN_TYPE, type,
 			       VOH_LIST_COLUMN_STATE, state,
+			       VOH_LIST_COLUMN_CAPABILITY, capability,
 			       -1);
       }
 }
@@ -601,7 +608,6 @@ GtkTreeModel *voh_rdr_info(guint sessionid, guint resourceid,
       SaHpiRdrT			rdr;
       SaHpiEntryIdT		nextentryid;
       SaHpiSensorRecT		*sensor;
-      SaHpiSensorThresholdsT	thresholds;
       SaHpiSessionIdT		sid = (SaHpiSessionIdT)sessionid;
       SaHpiResourceIdT		rid = (SaHpiResourceIdT)resourceid;
       SaHpiEntryIdT		rdrid = (SaHpiEntryIdT)rdrentryid;
@@ -763,7 +769,7 @@ GtkTreeModel *voh_rdr_info(guint sessionid, guint resourceid,
 			       1, vohEventState2String(sensor->Events,
 						       sensor->Category),
 			       -1);
-
+/*
 	    if (sensor->ThresholdDefn.IsAccessible == TRUE) {
 		rv = saHpiSensorThresholdsGet(sid, rid, sensor->Num,
 					      &thresholds);
@@ -871,23 +877,7 @@ GtkTreeModel *voh_rdr_info(guint sessionid, guint resourceid,
 					 1, vohSensorValue2FullString(sensor,
 					     &thresholds.PosThdHysteresis),
 					 -1);
-		}
-
-/*
-		  gtk_tree_store_append(info_store, &child, &iter);
-		  gtk_tree_store_set(info_store, &child,
-				     0, "Readable thresholds",
-				     1, vohSensorThdMask2String(
-				            sensor->ThresholdDefn.ReadThold),
-				     -1);
-
-		  gtk_tree_store_append(info_store, &child, &iter);
-		  gtk_tree_store_set(info_store, &child,
-				     0, "Writable thresholds",
-				     1, vohSensorThdMask2String(
-				            sensor->ThresholdDefn.WriteThold),
-				     -1);*/
-	    }
+		}*/
 
 	    break;
 	default:
@@ -2060,5 +2050,330 @@ gboolean voh_set_sensor_event_enable(guint sessionid,
 	}
 
 	return TRUE;
+}
+
+gboolean voh_get_sensor_assert_event_mask(guint sessionid,
+					  guint resourceid,
+					  guint rdrentryid,
+					  GList **evlist,
+					  gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiEventStateT	assertm, deassertm;
+	GList			*event_list = NULL;
+	VohEventStateT		*evst;
+
+	*evlist = NULL;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor event masks failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Getting sensor event masks failed", -1);
+		return FALSE;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	rv = saHpiSensorEventMasksGet(sid, rid, sensor.Num,
+				      &assertm, &deassertm);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor event masks failed", rv);
+		return FALSE;
+	}
+
+	event_list = vohEventState2List(sensor.Category);
+
+	*evlist = event_list;
+
+	while (event_list != NULL) {
+		evst = (VohEventStateT *)(event_list->data);
+		if (evst->value & assertm) {
+			evst->active = TRUE;
+		} else {
+			evst->active = FALSE;
+		}
+
+		event_list = event_list->next;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_get_sensor_deassert_event_mask(guint sessionid,
+					    guint resourceid,
+					    guint rdrentryid,
+					    GList **evlist,
+					    gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiEventStateT	assertm, deassertm;
+	GList			*event_list = NULL;
+	VohEventStateT		*evst;
+
+	*evlist = NULL;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor event masks failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Getting sensor event masks failed", -1);
+		return FALSE;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	rv = saHpiSensorEventMasksGet(sid, rid, sensor.Num,
+				      &assertm, &deassertm);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor event masks failed", rv);
+		return FALSE;
+	}
+
+	event_list = vohEventState2List(sensor.Category);
+
+	*evlist = event_list;
+
+	while (event_list != NULL) {
+		evst = (VohEventStateT *)(event_list->data);
+		if (evst->value & deassertm) {
+			evst->active = TRUE;
+		} else {
+			evst->active = FALSE;
+		}
+
+		event_list = event_list->next;
+	}
+
+	return TRUE;
+}
+
+
+gboolean voh_set_sensor_event_masks(guint sessionid,
+				    guint resourceid,
+				    guint rdrentryid,
+				    GList *assert_mask,
+				    GList *deassert_mask,
+				    gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiEventStateT	assertm = 0, deassertm = 0;
+	SaHpiEventStateT	rm_assertm = 0, rm_deassertm = 0;
+	VohEventStateT		*evst;
+
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting sensor event masks failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Setting sensor event masks failed", -1);
+		return FALSE;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	while (assert_mask != NULL) {
+		evst = (VohEventStateT *) assert_mask->data;
+		if (evst->active == TRUE) {
+			assertm |= evst->value;
+		} else {
+			rm_assertm |= evst->value;
+		}
+		assert_mask = assert_mask->next;
+	}
+
+	while (deassert_mask != NULL) {
+		evst = (VohEventStateT *) deassert_mask->data;
+		if (evst->active == TRUE) {
+			deassertm |= evst->value;
+		} else {
+			rm_deassertm |= evst->value;
+		}
+		deassert_mask = deassert_mask->next;
+	}
+
+	rv = saHpiSensorEventMasksSet(sid, rid, sensor.Num,
+				      SAHPI_SENS_ADD_EVENTS_TO_MASKS,
+				      assertm, deassertm);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting sensor event masks failed", rv);
+		return FALSE;
+	}
+
+	rv = saHpiSensorEventMasksSet(sid, rid, sensor.Num,
+				      SAHPI_SENS_REMOVE_EVENTS_FROM_MASKS,
+				      rm_assertm, rm_deassertm);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting sensor event masks failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_get_sensor_event_states_supported(guint sessionid,
+					       guint resourceid,
+					       guint rdrentryid,
+					       GList **evlist,
+					       gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	GList			*event_list = NULL;
+	VohEventStateT		*evst;
+
+	*evlist = NULL;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor event states failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Getting sensor event states failed", -1);
+		return FALSE;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	event_list = vohEventState2List(sensor.Category);
+
+	*evlist = event_list;
+
+	while (event_list != NULL) {
+		evst = (VohEventStateT *)(event_list->data);
+		if (evst->value & sensor.Events) {
+			evst->active = TRUE;
+		} else {
+			evst->active = FALSE;
+		}
+
+		event_list = event_list->next;
+	}
+
+	return TRUE;
+}
+
+GList *voh_get_sensor_threshold_info(guint sessionid,
+				     guint resourceid,
+				     guint rdrentryid,
+				     gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiSensorThresholdsT	thresholds;
+	GList			*info = NULL;
+	gchar			info_str[1024];
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor threshold info failed", rv);
+		return NULL;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Getting sensor threshold info failed", -1);
+		return NULL;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	rv = saHpiSensorThresholdsGet(sid, rid, sensor.Num, &thresholds);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Thresholds getting failed", rv);
+	}
+
+	sprintf(info_str, "Low Minor:\t\t%s",
+		vohReadWriteThds2String(sensor.ThresholdDefn.ReadThold,
+					sensor.ThresholdDefn.WriteThold,
+					SAHPI_STM_LOW_MINOR));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	sprintf(info_str, "Up Minor:\t\t\t%s",
+		vohReadWriteThds2String(sensor.ThresholdDefn.ReadThold,
+					sensor.ThresholdDefn.WriteThold,
+					SAHPI_STM_UP_MINOR));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	sprintf(info_str, "Low Major:\t\t%s",
+		vohReadWriteThds2String(sensor.ThresholdDefn.ReadThold,
+					sensor.ThresholdDefn.WriteThold,
+					SAHPI_STM_LOW_MAJOR));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	sprintf(info_str, "Up Major:\t\t\t%s",
+		vohReadWriteThds2String(sensor.ThresholdDefn.ReadThold,
+					sensor.ThresholdDefn.WriteThold,
+					SAHPI_STM_UP_MAJOR));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	sprintf(info_str, "Low Critical:\t\t%s",
+		vohReadWriteThds2String(sensor.ThresholdDefn.ReadThold,
+					sensor.ThresholdDefn.WriteThold,
+					SAHPI_STM_LOW_CRIT));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	sprintf(info_str, "Up Critical:\t\t%s",
+		vohReadWriteThds2String(sensor.ThresholdDefn.ReadThold,
+					sensor.ThresholdDefn.WriteThold,
+					SAHPI_STM_UP_CRIT));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	sprintf(info_str, "Low Hysteresis:\t\t%s",
+		vohReadWriteThds2String(sensor.ThresholdDefn.ReadThold,
+					sensor.ThresholdDefn.WriteThold,
+					SAHPI_STM_LOW_HYSTERESIS));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	sprintf(info_str, "Up Hysteresis:\t\t%s",
+		vohReadWriteThds2String(sensor.ThresholdDefn.ReadThold,
+					sensor.ThresholdDefn.WriteThold,
+					SAHPI_STM_UP_HYSTERESIS));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	return info;
 }
 
