@@ -119,6 +119,17 @@ static GtkWidget *hview_get_toolbar(HviewWidgetsT *w)
       tooltips = gtk_tooltips_new();
       gtk_tool_item_set_tooltip(titem, tooltips, "Discover", NULL);
 
+      iconw = create_pixmap("viewmag.png");
+      w->rsitem = gtk_tool_button_new(iconw, "Read sensor");
+      g_signal_connect(G_OBJECT(w->rsitem), "clicked",
+		       G_CALLBACK(hview_read_sensor_call),
+		       (gpointer) w);
+      gtk_toolbar_insert(GTK_TOOLBAR(tbar), w->rsitem, -1);
+
+      tooltips = gtk_tooltips_new();
+      gtk_tool_item_set_tooltip(w->rsitem, tooltips, "Read Sensor", NULL);
+      gtk_widget_set_state(GTK_WIDGET(w->rsitem), GTK_STATE_INSENSITIVE);
+
       return tbar;
 }
 

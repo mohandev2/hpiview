@@ -497,3 +497,249 @@ const char *vohEventState2String(SaHpiEventStateT es,
 	    return "unspecified";
       }
 }
+
+const char *vohSensorUnits2String(SaHpiSensorUnitsT unit)
+{
+      static cMap units_map[] = {
+		{SAHPI_SU_UNSPECIFIED,	"unspecified unit"},
+		{SAHPI_SU_DEGREES_C,	"C (degree Celsius)"},
+		{SAHPI_SU_DEGREES_F,	"F (degree Fahrenheit)"},
+		{SAHPI_SU_DEGREES_K,	"K (Kelvin degree)"},
+		{SAHPI_SU_VOLTS,	"V (volt)"},
+		{SAHPI_SU_AMPS,		"A (ampere)"},
+		{SAHPI_SU_WATTS,	"W (watt)"},
+		{SAHPI_SU_JOULES,	"J (joule)"},
+		{SAHPI_SU_COULOMBS,	"C (coulomb)"},
+		{SAHPI_SU_VA,		"VA (volt ampere)"},
+		{SAHPI_SU_NITS,		"nt (nit)"},
+		{SAHPI_SU_LUMEN,	"lm (lumen)"},
+		{SAHPI_SU_LUX,		"lx (lux)"},
+		{SAHPI_SU_CANDELA,	"cd (candela)"},
+		{SAHPI_SU_KPA,		"kPa (kilopaskal)"},
+		{SAHPI_SU_PSI,		"psi (pound per square inch)"},
+		{SAHPI_SU_NEWTON,	"N (newton)"},
+		{SAHPI_SU_CFM,		"cfm (cubic feet per minute)"},
+		{SAHPI_SU_RPM,		"r/min (revolution per minute)"},
+		{SAHPI_SU_HZ,		"Hz (hertz)"},
+		{SAHPI_SU_MICROSECOND,	"microsecond"},
+		{SAHPI_SU_MILLISECOND,	"msec (millisecond)"},
+		{SAHPI_SU_SECOND,	"sec (second)"},
+		{SAHPI_SU_MINUTE,	"min (minute)"},
+		{SAHPI_SU_HOUR,		"hr (hour)"},
+		{SAHPI_SU_DAY,		"da (day)"},
+		{SAHPI_SU_WEEK,		"wk (week)"},
+		{SAHPI_SU_MIL,		"mil (milli-inch)"},
+		{SAHPI_SU_INCHES,	"in (inch)"},
+		{SAHPI_SU_FEET,		"ft (feet)"},
+		{SAHPI_SU_CU_IN,	"in^3 (cubic inch)"},
+		{SAHPI_SU_CU_FEET,	"ft^3 (cubic feet)"},
+		{SAHPI_SU_MM,		"mm (millimeter)"},
+		{SAHPI_SU_CM,		"cm (centimeter)"},
+		{SAHPI_SU_M,		"m (meter)"},
+		{SAHPI_SU_CU_CM,	"cm^3 (cubic centimeter)"},
+		{SAHPI_SU_CU_M,		"m^3 (cubic meter)"},
+		{SAHPI_SU_LITERS,	"L (liter)"},
+		{SAHPI_SU_FLUID_OUNCE,	"fl oz (fluid ounce)"},
+		{SAHPI_SU_RADIANS,	"rad (radian)"},
+		{SAHPI_SU_STERADIANS,	"sr (steradian)"},
+		{SAHPI_SU_REVOLUTIONS,	"rev (revolution)"},
+		{SAHPI_SU_CYCLES,	"c (cycle)"},
+		{SAHPI_SU_GRAVITIES,	"g (gravity acceleration)"},
+		{SAHPI_SU_OUNCE,	"oz (ounce)"},
+		{SAHPI_SU_POUND,	"lb (pound)"},
+		{SAHPI_SU_FT_LB,	"ft-lb (foot pound)"},
+		{SAHPI_SU_OZ_IN, 	"oz in (ounce per inch)"},
+		{SAHPI_SU_GAUSS,	"Gs (gauss)"},
+		{SAHPI_SU_GILBERTS,	"Gi (gilbert)"},
+		{SAHPI_SU_HENRY,	"H (henry)"},
+		{SAHPI_SU_MILLIHENRY,	"mH (millihenry)"},
+		{SAHPI_SU_FARAD,	"F (farad)"},
+		{SAHPI_SU_MICROFARAD,	"microF (microfarad)"},
+		{SAHPI_SU_OHMS,		"ohm"},
+		{SAHPI_SU_SIEMENS,	"S (siemens)"},
+		{SAHPI_SU_MOLE,		"mol (mole)"},
+		{SAHPI_SU_BECQUEREL,	"Bq (becquerel)"},
+		{SAHPI_SU_PPM,		"ppm (part per million)"},
+		{SAHPI_SU_RESERVED,	"reserved unit"},
+		{SAHPI_SU_DECIBELS,	"dB (decibel)"},
+		{SAHPI_SU_DBA,		"db A (unit of sound intensity)"},
+		{SAHPI_SU_DBC,		"dB c (unit of signal strength)"},
+		{SAHPI_SU_GRAY,		"Gy (gray)"},
+		{SAHPI_SU_SIEVERT,	"Sv (sievert)"},
+		{SAHPI_SU_COLOR_TEMP_DEG_K, "CCT (color temperature)"},
+		{SAHPI_SU_BIT,		"b (bit)"},
+		{SAHPI_SU_KILOBIT,	"kbit (kilobit)"},
+		{SAHPI_SU_MEGABIT,	"megabit"},
+		{SAHPI_SU_GIGABIT,	"gigabit"},
+		{SAHPI_SU_BYTE,		"B (byte)"},
+		{SAHPI_SU_KILOBYTE,	"kB (kilobyte)"},
+		{SAHPI_SU_MEGABYTE,	"MB (megabyte)"},
+		{SAHPI_SU_GIGABYTE,	"GB (gigabyte)"},
+		{SAHPI_SU_WORD,		"word"},
+		{SAHPI_SU_DWORD,	"double word"},
+		{SAHPI_SU_QWORD,	"quadword"},
+		{SAHPI_SU_LINE,		"line"},
+		{SAHPI_SU_HIT,		"hit"},
+		{SAHPI_SU_MISS,		"miss"},
+		{SAHPI_SU_RETRY,	"retry"},
+		{SAHPI_SU_RESET,	"reset"},
+		{SAHPI_SU_OVERRUN,	"overrun"},
+		{SAHPI_SU_UNDERRUN,	"underrun"},
+		{SAHPI_SU_COLLISION,	"collision"},
+		{SAHPI_SU_PACKETS,	"packet(s)"},
+		{SAHPI_SU_MESSAGES,	"message(s)"},
+		{SAHPI_SU_CHARACTERS,	"character(s)"},
+		{SAHPI_SU_ERRORS,	"error(s)"},
+		{SAHPI_SU_CORRECTABLE_ERRORS, "correctable error(s)"},
+		{SAHPI_SU_UNCORRECTABLE_ERRORS, "uncorrectable error(S)"},
+		{0, 0}
+      };
+      return ValueToString(units_map, unit, "%d");
+}
+
+const char *vohSensorUnits2Short(SaHpiSensorUnitsT unit)
+{
+      static cMap units_map[] = {
+		{SAHPI_SU_UNSPECIFIED,	"c.u."},
+		{SAHPI_SU_DEGREES_C,	"C"},
+		{SAHPI_SU_DEGREES_F,	"F"},
+		{SAHPI_SU_DEGREES_K,	"K"},
+		{SAHPI_SU_VOLTS,	"V"},
+		{SAHPI_SU_AMPS,		"A"},
+		{SAHPI_SU_WATTS,	"W"},
+		{SAHPI_SU_JOULES,	"J"},
+		{SAHPI_SU_COULOMBS,	"C"},
+		{SAHPI_SU_VA,		"VA"},
+		{SAHPI_SU_NITS,		"nt"},
+		{SAHPI_SU_LUMEN,	"lm"},
+		{SAHPI_SU_LUX,		"lx"},
+		{SAHPI_SU_CANDELA,	"cd"},
+		{SAHPI_SU_KPA,		"kPa"},
+		{SAHPI_SU_PSI,		"psi"},
+		{SAHPI_SU_NEWTON,	"N"},
+		{SAHPI_SU_CFM,		"cfm"},
+		{SAHPI_SU_RPM,		"r/min"},
+		{SAHPI_SU_HZ,		"Hz"},
+		{SAHPI_SU_MICROSECOND,	"microsecond"},
+		{SAHPI_SU_MILLISECOND,	"msec"},
+		{SAHPI_SU_SECOND,	"sec"},
+		{SAHPI_SU_MINUTE,	"min"},
+		{SAHPI_SU_HOUR,		"hr"},
+		{SAHPI_SU_DAY,		"da"},
+		{SAHPI_SU_WEEK,		"wk"},
+		{SAHPI_SU_MIL,		"mil"},
+		{SAHPI_SU_INCHES,	"in"},
+		{SAHPI_SU_FEET,		"ft"},
+		{SAHPI_SU_CU_IN,	"in^3"},
+		{SAHPI_SU_CU_FEET,	"ft^3"},
+		{SAHPI_SU_MM,		"mm"},
+		{SAHPI_SU_CM,		"cm"},
+		{SAHPI_SU_M,		"m"},
+		{SAHPI_SU_CU_CM,	"cm^3"},
+		{SAHPI_SU_CU_M,		"m^3"},
+		{SAHPI_SU_LITERS,	"L"},
+		{SAHPI_SU_FLUID_OUNCE,	"fl oz"},
+		{SAHPI_SU_RADIANS,	"rad"},
+		{SAHPI_SU_STERADIANS,	"sr"},
+		{SAHPI_SU_REVOLUTIONS,	"rev"},
+		{SAHPI_SU_CYCLES,	"c"},
+		{SAHPI_SU_GRAVITIES,	"g"},
+		{SAHPI_SU_OUNCE,	"oz"},
+		{SAHPI_SU_POUND,	"lb"},
+		{SAHPI_SU_FT_LB,	"ft-lb"},
+		{SAHPI_SU_OZ_IN, 	"oz in"},
+		{SAHPI_SU_GAUSS,	"Gs"},
+		{SAHPI_SU_GILBERTS,	"Gi"},
+		{SAHPI_SU_HENRY,	"H"},
+		{SAHPI_SU_MILLIHENRY,	"mH"},
+		{SAHPI_SU_FARAD,	"F"},
+		{SAHPI_SU_MICROFARAD,	"microF"},
+		{SAHPI_SU_OHMS,		"ohm"},
+		{SAHPI_SU_SIEMENS,	"S"},
+		{SAHPI_SU_MOLE,		"mol"},
+		{SAHPI_SU_BECQUEREL,	"Bq"},
+		{SAHPI_SU_PPM,		"ppm"},
+		{SAHPI_SU_RESERVED,	"reserved unit"},
+		{SAHPI_SU_DECIBELS,	"dB"},
+		{SAHPI_SU_DBA,		"db A"},
+		{SAHPI_SU_DBC,		"dB c"},
+		{SAHPI_SU_GRAY,		"Gy"},
+		{SAHPI_SU_SIEVERT,	"Sv"},
+		{SAHPI_SU_COLOR_TEMP_DEG_K, "CCT"},
+		{SAHPI_SU_BIT,		"bit"},
+		{SAHPI_SU_KILOBIT,	"kbit"},
+		{SAHPI_SU_MEGABIT,	"megabit"},
+		{SAHPI_SU_GIGABIT,	"gigabit"},
+		{SAHPI_SU_BYTE,		"B"},
+		{SAHPI_SU_KILOBYTE,	"kB"},
+		{SAHPI_SU_MEGABYTE,	"MB"},
+		{SAHPI_SU_GIGABYTE,	"GB"},
+		{SAHPI_SU_WORD,		"word"},
+		{SAHPI_SU_DWORD,	"double word"},
+		{SAHPI_SU_QWORD,	"quadword"},
+		{SAHPI_SU_LINE,		"line"},
+		{SAHPI_SU_HIT,		"hit"},
+		{SAHPI_SU_MISS,		"miss"},
+		{SAHPI_SU_RETRY,	"retry"},
+		{SAHPI_SU_RESET,	"reset"},
+		{SAHPI_SU_OVERRUN,	"overrun"},
+		{SAHPI_SU_UNDERRUN,	"underrun"},
+		{SAHPI_SU_COLLISION,	"collision"},
+		{SAHPI_SU_PACKETS,	"packet(s)"},
+		{SAHPI_SU_MESSAGES,	"message(s)"},
+		{SAHPI_SU_CHARACTERS,	"character(s)"},
+		{SAHPI_SU_ERRORS,	"error(s)"},
+		{SAHPI_SU_CORRECTABLE_ERRORS, "correctable error(s)"},
+		{SAHPI_SU_UNCORRECTABLE_ERRORS, "uncorrectable error(s)"},
+		{0, 0}
+      };
+      return ValueToString(units_map, unit, "%d");
+}
+
+const char *vohSensorThdMask2String(SaHpiSensorThdMaskT mask)
+{
+      static cMap mask_map[] = {
+		{SAHPI_STM_LOW_MINOR,		"Low Minor"},
+		{SAHPI_STM_LOW_MAJOR,		"Low Major"},
+		{SAHPI_STM_LOW_CRIT,		"Low Critical"},
+		{SAHPI_STM_UP_MINOR,		"Up Minor"},
+		{SAHPI_STM_UP_MAJOR,		"Up Major"},
+		{SAHPI_STM_UP_CRIT,		"Up Critical"},
+		{SAHPI_STM_UP_HYSTERESIS,	"Up Hysteresis"},
+		{SAHPI_STM_LOW_HYSTERESIS,	"Low Hysteresis"},
+		{0, 0}
+      };
+
+      return hpiBitMask2String(mask_map, mask);
+
+}
+
+const char *vohSensorValue2String(SaHpiSensorReadingT *sv)
+{
+      SaHpiSensorReadingTypeT		type = sv->Type;
+      SaHpiSensorReadingUnionT		value = sv->Value;
+      static char				str[1024];
+
+      if (sv->IsSupported == FALSE)
+	    return "";
+
+      switch (type) {
+	case SAHPI_SENSOR_READING_TYPE_INT64:
+	    sprintf(str, "%lld", value.SensorInt64);
+	    break;
+	case SAHPI_SENSOR_READING_TYPE_UINT64:
+	    sprintf(str, "%llu", value.SensorUint64);
+	    break;
+	case SAHPI_SENSOR_READING_TYPE_FLOAT64:
+	    sprintf(str, "%10.3f", value.SensorFloat64);
+	    break;
+	case SAHPI_SENSOR_READING_TYPE_BUFFER:
+	    snprintf(str, strlen((char *)value.SensorBuffer), "%s",
+		     (char *)value.SensorBuffer);
+	    break;
+	default:
+	    return "";
+      }
+
+      return str;
+}

@@ -33,5 +33,7 @@ void hview_tree_row_activated_call(GtkWidget *widget,
 					  gpointer data);
 void hview_tree_row_selected_call(GtkTreeSelection *selection,
 					 gpointer data);
+gint hview_readsensor_thread(gpointer data);
+void hview_read_sensor_call(GtkWidget *widget, gpointer data);
 
 #endif
