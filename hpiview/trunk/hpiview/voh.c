@@ -1610,6 +1610,27 @@ gboolean voh_check_resource_presence(guint sessionid,
 	}
 }
 
+gboolean voh_check_rdr_presence(guint sessionid,
+				guint resourceid,
+				guint rdrentryid,
+				gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting rdr failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 gboolean voh_set_resource_severity(guint sessionid, guint resourceid,
 				   guint severity, gchar *err)
 {
@@ -1744,3 +1765,300 @@ gboolean voh_set_resource_tag(guint sessionid,
 
 	return TRUE;
 }
+
+GList *voh_get_sensor_info(guint sessionid,
+			   guint resourceid,
+			   guint rdrentryid,
+			   gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	GList			*info = NULL;
+	gchar			info_str[1024];
+	gchar			name[1024];
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor info failed", rv);
+		return NULL;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Getting sensor info failed (invalid argument)",
+									-1);
+		return NULL;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	if (sensor.DataFormat.Range.Flags & SAHPI_SRF_NOMINAL) {
+		sprintf(info_str, "Nominal value:\t\t%s",
+			vohSensorValue2FullString(&sensor,
+					&sensor.DataFormat.Range.Nominal));
+		info = g_list_prepend(info, g_strdup(info_str));
+	}
+
+	if (sensor.DataFormat.Range.Flags & SAHPI_SRF_NORMAL_MAX) {
+		sprintf(info_str, "Normal Max value:\t%s",
+			vohSensorValue2FullString(&sensor,
+					&sensor.DataFormat.Range.NormalMax));
+		info = g_list_prepend(info, g_strdup(info_str));
+	}
+
+	if (sensor.DataFormat.Range.Flags & SAHPI_SRF_NORMAL_MIN) {
+		sprintf(info_str, "Normal Min value:\t%s",
+			vohSensorValue2FullString(&sensor,
+					&sensor.DataFormat.Range.NormalMin));
+		info = g_list_prepend(info, g_strdup(info_str));
+	}
+
+	if (sensor.DataFormat.Range.Flags & SAHPI_SRF_MAX) {
+		sprintf(info_str, "Max value:\t\t%s",
+			vohSensorValue2FullString(&sensor,
+						&sensor.DataFormat.Range.Max));
+		info = g_list_prepend(info, g_strdup(info_str));
+	}
+
+	if (sensor.DataFormat.Range.Flags & SAHPI_SRF_MIN) {
+		sprintf(info_str, "Min value:\t\t\t%s",
+			vohSensorValue2FullString(&sensor,
+						&sensor.DataFormat.Range.Min));
+		info = g_list_prepend(info, g_strdup(info_str));
+	}
+
+	if (sensor.DataFormat.IsSupported == TRUE) {
+		sprintf(info_str, "Sensor base unit:\t\%s",
+			vohSensorUnits2String(sensor.DataFormat.BaseUnits));
+		info = g_list_prepend(info, g_strdup(info_str));
+	}
+
+	sprintf(info_str, "Sensor control:\t\t%s",
+		vohBoolean2String(sensor.EnableCtrl));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	sprintf(info_str, "Sensor type:\t\t%s",
+		vohSensorType2String(sensor.Type));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+
+	fixstr(&rdr.IdString, name);
+	sprintf(info_str, "Sensor name:\t\t%s", name);
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	return info;
+}
+
+gboolean voh_get_sensor_enable(guint sessionid,
+			       guint resourceid,
+			       guint rdrentryid,
+			       gboolean *status,
+			       gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiBoolT		lstatus;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor enable status failed", rv);
+		return TRUE;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Getting sensor enable status failed", -1);
+		return TRUE;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	rv = saHpiSensorEnableGet(sid, rid, sensor.Num, &lstatus);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor enable status failed", rv);
+		return FALSE;
+	}
+
+	*status = (gboolean) lstatus;
+	return TRUE;
+}
+
+gboolean voh_set_sensor_enable(guint sessionid,
+			       guint resourceid,
+			       guint rdrentryid,
+			       gboolean status,
+			       gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting sensor enable status failed", rv);
+		return TRUE;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Setting sensor enable status failed", -1);
+		return TRUE;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	rv = saHpiSensorEnableSet(sid, rid, sensor.Num, status);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting sensor enable status failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+GList *voh_get_sensor_event_info(guint sessionid,
+				 guint resourceid,
+				 guint rdrentryid,
+				 gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiEventStateT	event_state, as_state, de_state;
+	SaHpiSensorReadingT	reading;
+	GList			*info = NULL;
+	gchar			info_str[1024];
+	gchar			name[1024];
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor info failed", rv);
+		return NULL;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Getting sensor info failed (invalid argument)",
+									-1);
+		return NULL;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	rv = saHpiSensorReadingGet(sid, rid, sensor.Num, &reading,
+				   &event_state);
+
+	if (rv == SA_OK) {
+		sprintf(info_str, "Current event state:\t\t%s",
+				vohEventState2String(event_state,
+						     sensor.Category));
+		info = g_list_prepend(info, g_strdup(info_str));
+	}
+/*
+	sprintf(info_str, "Sensor states supported:\n%s",
+		vohEventState2String(sensor.Events, sensor.Category));
+	info = g_list_prepend(info, g_strdup(info_str));
+*/
+	sprintf(info_str, "Sensor event control:\t\t%s",
+		vohSensorEventCtrl2String(sensor.EventCtrl));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	sprintf(info_str, "Event category:\t\t\t%s",
+		vohEventCategory2String(sensor.Category));
+	info = g_list_prepend(info, g_strdup(info_str));
+
+	return info;
+}
+
+gboolean voh_get_sensor_event_enable(guint sessionid,
+				     guint resourceid,
+				     guint rdrentryid,
+				     gboolean *status,
+				     gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiBoolT		lstatus;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor event enable status failed", rv);
+		return TRUE;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Getting sensor event enable status failed", -1);
+		return TRUE;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	rv = saHpiSensorEventEnableGet(sid, rid, sensor.Num, &lstatus);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor event enable status failed", rv);
+		return FALSE;
+	}
+
+	*status = (gboolean) lstatus;
+	return TRUE;
+}
+
+gboolean voh_set_sensor_event_enable(guint sessionid,
+				     guint resourceid,
+				     guint rdrentryid,
+				     gboolean status,
+				     gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting sensor event enable status failed", rv);
+		return TRUE;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Setting sensor event enable status failed", -1);
+		return TRUE;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	rv = saHpiSensorEventEnableSet(sid, rid, sensor.Num, status);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting sensor event enable status failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+

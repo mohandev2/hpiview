@@ -40,6 +40,7 @@ GtkWidget *hview_get_event_window(HviewWidgetsT *w);
 GtkWidget *hview_get_about_window(HviewWidgetsT *w);
 GtkWidget *hview_get_rpt_settings_window(HviewRptDialogWidgetsT *w);
 GtkWidget *hview_get_rpt_empty_dialog_window(HviewWidgetsT *w);
+GtkWidget *hview_get_sensor_settings_window(HviewSenDialogWidgetsT *w);
 
 
 #endif /* __HVIEW_WINDOWS_H__ */

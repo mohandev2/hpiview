@@ -1296,3 +1296,168 @@ void hview_rpt_settings_call(GtkWidget *widget, gpointer data)
 	gtk_widget_destroy(dialog_window);
 }
 
+void hview_sensor_settings_ok_response(gpointer data)
+{
+	HviewSenDialogWidgetsT	*dw = (HviewSenDialogWidgetsT *) data;
+	HviewWidgetsT		*w = dw->parent_widgets;
+	GtkTreeModel		*model;
+	GtkTreeIter		iter,		parent;
+	GtkTreeSelection	*selection;
+	gint			page;
+	GtkWidget		*tview,	*dview;
+	guint			id,		pid,	sid;
+	gboolean		res,		status;
+	gchar			err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	dview = w->tab_views[page].detail_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		if (!gtk_tree_model_iter_parent(model, &parent, &iter))
+			return;
+		gtk_tree_model_get(model, &parent, VOH_LIST_COLUMN_ID,
+				   &pid, -1);
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+	} else {
+		return;
+	}
+
+	status = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
+							dw->enable_status));
+	res = voh_set_sensor_enable(sid, pid, id, status, err);
+
+	if (res == FALSE) {
+		hview_print(w, err);
+	}
+
+	status = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
+						dw->event_enable_status));
+	res = voh_set_sensor_event_enable(sid, pid, id, status, err);
+
+	if (res == FALSE) {
+		hview_print(w, err);
+	}
+
+}
+
+void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
+{
+	HviewWidgetsT		*w = (HviewWidgetsT *) data;
+	HviewSenDialogWidgetsT	dw;
+	GtkWidget		*dialog_window;
+	GtkTreeModel		*model;
+	GtkTreeIter		iter,		parent;
+	GtkTreeSelection	*selection;
+	gint			page;
+	GtkWidget		*tview;
+	guint			id,		pid,	sid;
+	GtkWidget		*label;
+	GtkWidget		*hbox;
+	GList			*sen_info;
+	gboolean		status;
+	gint			res;
+	gchar			err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+	res = gtk_tree_selection_get_selected(selection, &model, &iter);
+	if (res == FALSE) {
+		return;
+	}
+
+	if (!gtk_tree_model_iter_parent(model, &parent, &iter))
+		return;
+
+	gtk_tree_model_get(model, &parent, VOH_LIST_COLUMN_ID, &pid, -1);
+	gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+	res = voh_check_rdr_presence(sid, pid, id, err);
+	if (res == FALSE) {
+		dialog_window = hview_get_rpt_empty_dialog_window(w);
+		hview_print(w, err);
+	} else {
+		dw.parent_widgets = w;
+		dialog_window = hview_get_sensor_settings_window(&dw);
+		dw.dialog_window = dialog_window;
+
+		sen_info = voh_get_sensor_info(sid, pid, id, err);
+
+		if (sen_info == NULL) {
+			hview_print(w, err);
+		} else {
+			while (sen_info != NULL) {
+				hbox = gtk_hbox_new(FALSE, 10);
+				gtk_box_pack_start(GTK_BOX(dw.info_box),
+						   hbox, FALSE, FALSE, 2);
+				label = gtk_label_new(sen_info->data);
+				gtk_box_pack_start(GTK_BOX(hbox),
+						   label, FALSE, FALSE, 10);
+				sen_info = sen_info->next;
+			}
+		}
+
+		res = voh_get_sensor_enable(sid, pid, id, &status, err);
+		if (res != FALSE) {
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(
+						dw.enable_status), status);
+		} else {
+			hview_print(w, err);
+		}
+
+		sen_info = voh_get_sensor_event_info(sid, pid, id, err);
+
+		if (sen_info == NULL) {
+			hview_print(w, err);
+		} else {
+			while (sen_info != NULL) {
+				hbox = gtk_hbox_new(FALSE, 10);
+				gtk_box_pack_start(GTK_BOX(dw.event_info_box),
+						   hbox, FALSE, FALSE, 2);
+				label = gtk_label_new(sen_info->data);
+				gtk_box_pack_start(GTK_BOX(hbox),
+						   label, FALSE, FALSE, 10);
+				sen_info = sen_info->next;
+			}
+		}
+
+		res = voh_get_sensor_event_enable(sid, pid, id, &status, err);
+		if (res != FALSE) {
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(
+					dw.event_enable_status), status);
+		} else {
+			hview_print(w, err);
+		}
+	}
+
+
+	gtk_widget_show_all(dialog_window);
+
+	res = gtk_dialog_run(GTK_DIALOG(dialog_window));
+	switch (res) {
+	case GTK_RESPONSE_OK:
+		hview_sensor_settings_ok_response((gpointer) &dw);
+		break;
+	default:
+		break;
+	}
+
+	gtk_widget_destroy(dialog_window);
+}
+
