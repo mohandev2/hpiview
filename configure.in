@@ -45,6 +45,10 @@ fi
 
 openhpi_includes=`pkg-config --cflags openhpi`
 openhpi_libs=`pkg-config --libs openhpi`
+if test "x$openhpi_libs" = "x"; then
+   { exit 1; }
+fi
+
 
 CXXFLAGS="$CXXFLAGS $openhpi_includes"
 LIBS="$LIBS $openhpi_libs"
