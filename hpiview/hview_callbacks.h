@@ -22,7 +22,7 @@ void hview_quit_call(GtkWidget *widget, gpointer data);
 void hview_empty_log_call(GtkWidget *widget, gpointer data);
 void hview_load_plugin_call(GtkWidget *widget, gpointer data);
 void hview_unload_plugin_call(GtkWidget *widget, gpointer data);
-gpointer hview_discover_thread(gpointer data);
+gint hview_discover_thread(gpointer data);
 void hview_discover_call(GtkWidget *widget, gpointer data);
 void hview_about_call(void);
 void hview_tree_column_activated_call(GtkTreeViewColumn *column,

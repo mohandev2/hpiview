@@ -53,7 +53,7 @@ void hview_unload_plugin_call(GtkWidget *widget, gpointer data)
       hview_print(w, "\"Unload plugin\" is not supported yet");
 }
 
-gpointer hview_discover_thread(gpointer data)
+gint hview_discover_thread(gpointer data)
 {
       HviewWidgetsT	*w = (HviewWidgetsT *) data;
       GtkTreeModel	*domains;
@@ -72,11 +72,9 @@ gpointer hview_discover_thread(gpointer data)
 	    hview_statusbar_push(w, "ready");
       }
       
-      g_thread_exit(0);
-
       gtk_widget_set_sensitive(w->main_window, TRUE);
 
-      return (void *)1;
+      return FALSE;
 }
 
 void hview_discover_call(GtkWidget *widget, gpointer data)
@@ -85,8 +83,6 @@ void hview_discover_call(GtkWidget *widget, gpointer data)
       GtkTreeModel	*domains;
       GtkTreeViewColumn	*column;
       gchar		err[100];
-      GtkWidget		*win;
-      GThread		*thread;
 
       column = gtk_tree_view_get_column(GTK_TREE_VIEW(w->tree_view), 0);
       gtk_tree_view_column_set_title(column, HVIEW_DOMAIN_COLUMN_TITLE);
@@ -97,7 +93,7 @@ void hview_discover_call(GtkWidget *widget, gpointer data)
       voh_fini(NULL);
       hview_statusbar_push(w, "discovering (please wait)");
       gtk_widget_set_sensitive(w->main_window, FALSE);
-      thread = g_thread_create(hview_discover_thread, data, FALSE, NULL);
+      gtk_timeout_add(100, hview_discover_thread, data);
       
 }
 
