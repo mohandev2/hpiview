@@ -12,6 +12,16 @@ enum {
 };
 
 enum {
+      VOH_EVENT_LIST_COLUMN_TIME = 0,
+      VOH_EVENT_LIST_COLUMN_NAME,
+      VOH_EVENT_LIST_COLUMN_SOURCE,
+      VOH_EVENT_LIST_COLUMN_SEVER,
+      VOH_EVENT_LIST_COLUMN_TYPE,
+      VOH_EVENT_LIST_COLUMN_DOMAIN,
+      VOH_EVENT_LIST_NUM_COL,
+};
+
+enum {
       VOH_ITER_IS_DOMAIN,
       VOH_ITER_IS_RPT,
       VOH_ITER_IS_CONTROL,
@@ -38,38 +48,47 @@ enum {
 #define VOH_ITER_RPT_STATE_RESET_DEASSERT	0x8
 
       
-int voh_init(gchar *err);
-int voh_fini(gchar *err);
+static void fixstr(SaHpiTextBufferT *strptr, char *outbuff);
+static void v_get_infra(SaHpiDomainIdT did, GtkTreeStore *store,
+			GtkTreeIter *parent);
+guint voh_open_session(guint domainid, gchar *err);
+gboolean voh_discover(guint sessionid, gchar *err);
+gboolean voh_session_close(guint domainid, gchar *err);
 GtkTreeModel *voh_list_domains(gchar *err);
-GtkTreeModel *voh_list_resources(gchar *err);
-int voh_list_rdrs(GtkTreeStore *pstore, SaHpiResourceIdT rid, gchar *err);
-GtkTreeModel *voh_domain_info(gchar *err);
-GtkTreeModel *voh_resource_info(guint id, gchar *err);
-GtkTreeModel *voh_rdr_info(guint rid, guint id, gchar *err);
-gint voh_read_sensor(GtkTreeStore *store, guint id, gchar *err);
-
-void voh_add_resource(GtkTreeStore *pstore,
+GtkTreeModel *voh_domain_info(guint domainid, gchar *err);
+GtkTreeModel *voh_resource_info(guint domainid, guint resourceid, gchar *err);
+GtkTreeModel *voh_rdr_info(guint domainid, guint resourceid,
+			   guint rdrentryid, gchar *err);
+gboolean voh_read_sensor(GtkTreeStore *store, guint domainid,
+			 guint entryid, gchar *err);
+GtkTreeModel *voh_list_resources(guint domainid, gchar *err);
+gboolean voh_list_rdrs(GtkTreeStore *pstore, guint domainid,
+		       guint resourceid, gchar *err);
+void voh_add_resource(GtkTreeStore *pstore, guint domainid,
 		      SaHpiRptEntryT *rpt);
-void voh_add_rdr(GtkTreeStore *pstore,
-		 SaHpiRdrT *rdr,
-		 SaHpiResourceIdT rid);
-gboolean find_iter_by_name(GtkTreeModel *model,
-			   guint column_num,
-			   const gchar *req_name,
-			   GtkTreeIter *iter);
-gboolean find_iter_by_id(GtkTreeModel *model,
-			 guint column_num,
-			 guint req_id,
-			 GtkTreeIter *iter);
-
+void voh_add_rdr(GtkTreeStore *pstore, SaHpiRdrT *rdr, guint resourceid);
+gboolean find_iter_by_id(GtkTreeModel *model, guint column_num,
+			 guint req_id, GtkTreeIter *iter);
+gboolean find_iter_by_name(GtkTreeModel *model, guint column_num,
+			   const gchar *req_name, GtkTreeIter *iter);
 guint voh_get_sensor_state(SaHpiSensorRecT *sensor, SaHpiSensorReadingT *sv);
-gboolean voh_get_power_state(guint id, GtkWidget *menu, gchar *err);
-gboolean voh_set_power_off(guint id, GtkTreeStore *store, gchar *err);
-gboolean voh_set_power_on(guint id, GtkTreeStore *store, gchar *err);
-gboolean voh_set_power_cycle(guint id, GtkTreeStore *store, gchar *err);
-
-gboolean voh_set_reset_cold(guint id, GtkTreeStore *store, gchar *err);
-gboolean voh_set_reset_warm(guint id, GtkTreeStore *store, gchar *err);
-gboolean voh_set_reset_assert(guint id, GtkTreeStore *store, gchar *err);
-gboolean voh_set_reset_deassert(guint id, GtkTreeStore *store, gchar *err);
+gboolean voh_get_power_state(guint domainid, guint resourceid,
+			     GtkWidget *menu, gchar *err);
+gboolean voh_set_power_off(guint domainid, guint resourceid,
+			   GtkTreeStore *store, gchar *err);
+gboolean voh_set_power_on(guint domainid, guint resourceid,
+			  GtkTreeStore *store, gchar *err);
+gboolean voh_set_power_cycle(guint domainid, guint resourceid,
+			     GtkTreeStore *store, gchar *err);
+gboolean voh_set_reset_cold(guint domainid, guint resourceid,
+			    GtkTreeStore *store, gchar *err);
+gboolean voh_set_reset_warm(guint domainid, guint resourceid,
+			    GtkTreeStore *store, gchar *err);
+gboolean voh_set_reset_assert(guint domainid, guint resourceid,
+			      GtkTreeStore *store, gchar *err);
+gboolean voh_set_reset_deassert(guint domainid, guint resourceid,
+				GtkTreeStore *store, gchar *err);
+gboolean voh_subscribe_events(guint domainid, gchar *err);
+gboolean voh_unsubscribe_events(guint domainid, gchar *err);
+gboolean voh_get_events(GtkTreeStore *event_list, guint domainid, gchar *err);
 

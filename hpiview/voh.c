@@ -8,87 +8,196 @@
 				    else \
 				        sprintf(err, "%s", str); \
 				}
+/*
+static VohDomainsT	*domains = NULL;
 
-static SaHpiSessionIdT	sessionid;
+static VohDomainsT *v_get_new_domain(VohDomainsT *dlist)
+{
+      VohDomainsT	*domain = NULL;
+
+      if (dlist == NULL) {
+	    return NULL;
+      }
+
+      while (dlist->next != NULL) {
+	    dlist = dlist->next;
+      }
+
+      domain = (VohDomainsT *)calloc(sizeof(VohDomainsT));
+      domain->domainid = domain->sessionid = 0;
+      domain->next = NULL;
+
+      dlist->next = domain;
+
+      return domain;
+}
+
+static VohDomainsT *v_find_domain(SaHpiDomainIdT did, VohDomainsT *dlist)
+{
+      VohDomainsT	*domain = dlist;
+
+      while (domain != NULL) {
+	    if (domain->domainid == did)
+		  break;
+	    domain = domain->next;
+      }
+
+      return domain;
+}
+
+static void v_remove_domain(SaHpiDomainIdT did, VohDomainsT *dlist)
+{
+      VohDomainsT	*domain = dlist;
+      VohDomainsT	*prevd = NULL;
+
+      while (domain != NULL) {
+	    if (domain->domainid == did)
+		  break;
+	    prevd = domain;
+	    domain = domain->next;
+      }
+
+      if (domain != NULL) {
+	    if (prevd != NULL) {
+		  prevd->next = domain->next;
+	    }
+	    free(domain);
+      }
+}
+*/
 
 static void fixstr(SaHpiTextBufferT *strptr, char *outbuff)
 {
-      size_t		datalen,	len;
+      size_t		datalen = strptr->DataLength;
       char		*str = (char *)strptr->Data;
 
-      if ((datalen = strptr->DataLength) != 0) {
-	    len = strlen(str);
-	    strncpy(outbuff, (char *)strptr->Data, datalen);
+      if (datalen != 0) {
+	    strncpy(outbuff, (char *)str, datalen);
       }
-      outbuff[datalen] = 0;
+      *(outbuff + datalen) = '\0';
 }
 
-int voh_init(gchar *err)
-{
-      SaErrorT	rv;
-
-      rv = saHpiSessionOpen(SAHPI_UNSPECIFIED_DOMAIN_ID, &sessionid, NULL);
-	if (rv != SA_OK) {
-	      VOH_ERROR(err, "Session opening failed", rv);
-	      return -1;
-	}
-
-	/*
-	 * Resource discovery
-	 */
-	rv = saHpiDiscover(sessionid);
-	if (rv != SA_OK) {
-	      VOH_ERROR(err, "Discovering failed", rv);
-	      return -1;
-	}
-
-	return 0;
-}
-
-int voh_fini(gchar *err)
+guint voh_open_session(guint domainid, gchar *err)
 {
       SaErrorT		rv;
+      SaHpiDomainIdT	did = (SaHpiDomainIdT)domainid;
+      SaHpiSessionIdT	sessionid;
 
-      rv = saHpiSessionClose(sessionid);
+      rv = saHpiSessionOpen(did, &sessionid, NULL);
       if (rv != SA_OK) {
-	    if (err)
-		  sprintf(err, "Session close failed (%s)",
-			  vohError2String(rv));
-	    return -1;
+	    VOH_ERROR(err, "Session open failed", rv);
+	    return 0;
       }
 
-      return 0;
+      return sessionid;
+}
+
+gboolean voh_discover(guint sessionid, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+
+      rv = saHpiDiscover(sid);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Discovering failed", rv);
+	    return FALSE;
+      }
+
+      return TRUE;
+}
+
+gboolean voh_session_close(guint sessionid, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+
+      rv = saHpiSessionClose(sid);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Session close failed", rv);
+	    return FALSE;
+      }
+
+      return TRUE;
+}
+
+static void v_get_infra(SaHpiDomainIdT did, GtkTreeStore *store,
+			GtkTreeIter *parent)
+{
+      SaErrorT			rv;
+      SaHpiDomainInfoT		info;
+      SaHpiEntryIdT		entryid, nextentryid;
+      SaHpiDrtEntryT		drtentry;
+      SaHpiSessionIdT		session;
+      GtkTreeIter		iter;
+      gchar			name[1024];
+
+      if (store == NULL)
+	    return;
+
+      rv = saHpiSessionOpen(did, &session, NULL);
+
+      if (rv != SA_OK)
+	    return;
+
+      gtk_tree_store_append(store, &iter, parent);
+
+      entryid = SAHPI_FIRST_ENTRY;
+      while (entryid != SAHPI_LAST_ENTRY) {
+	    rv = saHpiDrtEntryGet(session, entryid, &nextentryid, &drtentry);
+	    if (rv != SA_OK)
+		  break;
+	    v_get_infra(drtentry.DomainId, store, &iter);
+	    entryid = nextentryid;
+      }
+
+      rv = saHpiDomainInfoGet(session, &info);
+      if (rv == SA_OK) {
+	    fixstr(&(info.DomainTag), name);
+      } else {
+	    sprintf(name, "Unknown");
+      }
+
+
+      gtk_tree_store_set(store, &iter,
+			 VOH_LIST_COLUMN_NAME, name,
+			 VOH_LIST_COLUMN_ID, (guint)did,
+			 VOH_LIST_COLUMN_TYPE, VOH_ITER_IS_DOMAIN,
+			 -1);
+
+      saHpiSessionClose(session);
 }
 
 GtkTreeModel *voh_list_domains(gchar *err)
 {
       GtkTreeStore	*pstore;
-      GtkTreeIter	iter,	child;
 
-      pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
+     pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
 				  GDK_TYPE_PIXBUF, G_TYPE_UINT, G_TYPE_UINT,
 				  G_TYPE_UINT);
-      gtk_tree_store_append(pstore, &iter, NULL);
-
-      gtk_tree_store_set(pstore, &iter,
-			 VOH_LIST_COLUMN_NAME, "Domain #(single)",
-			 VOH_LIST_COLUMN_ID, SAHPI_UNSPECIFIED_DOMAIN_ID,
-			 VOH_LIST_COLUMN_TYPE, VOH_ITER_IS_DOMAIN,
-			 -1);
+ 
+      v_get_infra(SAHPI_UNSPECIFIED_DOMAIN_ID, pstore, NULL);
 
       return GTK_TREE_MODEL(pstore);
 }
 
-GtkTreeModel *voh_domain_info(gchar *err)
+/*
+GtkTreeModel *voh_domain_info(guint domainid, gchar *err)
 {
       SaErrorT		rv;
       GtkTreeStore	*info_store;
       GtkTreeIter	iter;
       SaHpiDomainInfoT	info;
       SaHpiTextBufferT	strptr;
+      SaHpiDomainIdT	did = (SaHpiDomainIdT)domainid;
       char		outbuff[1024];
 
-      if ((rv = saHpiDomainInfoGet(sessionid, &info)) != SA_OK) {
+      domain = v_find_domain(did, domains);
+      if (domain == NULL) {
+	    VOH_ERROR(err, "Domain info getting failed (invalid argument)", -1);
+	    return NULL;
+      }
+
+      if ((rv = saHpiDomainInfoGet(domain->sessionid, &info)) != SA_OK) {
 	    if (err)
 		  sprintf(err, "Domain info getting failed (%s)",
 			  vohError2String(rv));
@@ -114,29 +223,30 @@ GtkTreeModel *voh_domain_info(gchar *err)
 
       return GTK_TREE_MODEL(info_store);
 }
+*/
 
-GtkTreeModel *voh_resource_info(guint id, gchar *err)
+GtkTreeModel *voh_resource_info(guint sessionid, guint resourceid, gchar *err)
 {
       SaErrorT		rv;
       SaHpiRptEntryT	entry;
       SaHpiResetActionT	reset;
       SaHpiPowerStateT	power;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT	rid = (SaHpiResourceIdT)resourceid;
       GtkTreeStore	*info_store;
       GtkTreeIter	iter;
       gchar		name[1024];
 
-      rv = saHpiRptEntryGetByResourceId(sessionid, (SaHpiResourceIdT)id,
-				      &entry);
+      rv = saHpiRptEntryGetByResourceId(sid, rid, &entry);
       if (rv != SA_OK) {
-	    sprintf(err, "Resource info getting failed (%s)",
-			  vohError2String(rv));
+	    VOH_ERROR(err, "Resource info getting failed", rv);
 	    return NULL;
       }
 
       info_store = gtk_tree_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
 
       gtk_tree_store_append(info_store, &iter, NULL);
-      sprintf(name, "%d", id);
+      sprintf(name, "%d", rid);
       gtk_tree_store_set(info_store, &iter,
 			 0, "ResourceID",
 			 1, name,
@@ -174,8 +284,7 @@ GtkTreeModel *voh_resource_info(guint id, gchar *err)
 			       0, "Resource reset state",
 			       -1);
 	    
-	    rv = saHpiResourceResetStateGet(sessionid, (SaHpiResourceIdT)id,
-					    &reset);
+	    rv = saHpiResourceResetStateGet(sid, rid, &reset);
 	    if (rv == SA_OK) {
 		  gtk_tree_store_set(info_store, &iter,
 			       1, vohResetAction2String(reset),
@@ -190,19 +299,23 @@ GtkTreeModel *voh_resource_info(guint id, gchar *err)
       return GTK_TREE_MODEL(info_store);
 }
 
-GtkTreeModel *voh_rdr_info(guint rid, guint id, gchar *err)
+GtkTreeModel *voh_rdr_info(guint sessionid, guint resourceid,
+			   guint rdrentryid, gchar *err)
 {
       SaErrorT			rv;
       SaHpiRdrT			rdr;
       SaHpiEntryIdT		nextentryid;
       SaHpiSensorRecT		*sensor;
       SaHpiSensorThresholdsT	thresholds;
+      SaHpiSessionIdT		sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT		rid = (SaHpiResourceIdT)resourceid;
+      SaHpiEntryIdT		rdrid = (SaHpiEntryIdT)rdrentryid;
       GtkTreeStore		*info_store;
       GtkTreeIter		iter,		child;
       gchar			ids[100];
       gchar			name[1024];
 
-      rv = saHpiRdrGet(sessionid, rid, id, &nextentryid, &rdr);
+      rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
       if (rv != SA_OK) {
 	    VOH_ERROR(err, "Rdr info getting failed", rv);
 	    return NULL;
@@ -357,7 +470,7 @@ GtkTreeModel *voh_rdr_info(guint rid, guint id, gchar *err)
 			       -1);
 
 	    if (sensor->ThresholdDefn.IsAccessible == TRUE) {
-		rv = saHpiSensorThresholdsGet(sessionid, rid, sensor->Num,
+		rv = saHpiSensorThresholdsGet(sid, rid, sensor->Num,
 					      &thresholds);
 		if (rv != SA_OK) {
 		      VOH_ERROR(err, "Thresholds getting failed", rv);
@@ -491,52 +604,55 @@ GtkTreeModel *voh_rdr_info(guint rid, guint id, gchar *err)
       return GTK_TREE_MODEL(info_store);
 }
 
-gint voh_read_sensor(GtkTreeStore *store, guint id, gchar *err)
+gboolean voh_read_sensor(GtkTreeStore *store, guint sessionid,
+			 guint entryid, gchar *err)
 {
       SaErrorT			rv;
       SaHpiRdrT			rdr;
       SaHpiEntryIdT		nextentryid;
       SaHpiSensorRecT		*sensor;
       SaHpiSensorReadingT	reading;
+      SaHpiSessionIdT		sid = (SaHpiSessionIdT)sessionid;
+      SaHpiEntryIdT		enid = (SaHpiEntryIdT)entryid;
       GtkTreeIter		iter,	parent,	child;
-      guint			rid,	state;
+      guint			resourceid,	state;
       gboolean			res;
- 
+
       res = gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter);
       if (res == FALSE) {
-	    VOH_ERROR(err, "Invalid parameters", -1);
-	    return -1;
+	    VOH_ERROR(err, "Reading sensor failed (invalid argument)", -1);
+	    return FALSE;
       }
 
       res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
-			    (guint)id, &iter);
+			    entryid, &iter);
       if (res == FALSE) {
-	    VOH_ERROR(err, "Invalid parameters", -1);
-	    return -1;
+	    VOH_ERROR(err, "Reading sensor failed (invalid argument)", -1);
+	    return FALSE;
       }
 
       gtk_tree_model_iter_parent(GTK_TREE_MODEL(store), &parent, &iter);
       gtk_tree_model_get(GTK_TREE_MODEL(store), &parent,
-			 VOH_LIST_COLUMN_ID, &rid, -1);
+			 VOH_LIST_COLUMN_ID, &resourceid, -1);
 
-      rv = saHpiRdrGet(sessionid, rid, id, &nextentryid, &rdr);
+      rv = saHpiRdrGet(sid, (SaHpiResourceIdT)resourceid,
+		       enid, &nextentryid, &rdr);
       if (rv != SA_OK) {
-	    VOH_ERROR(err, "Rdr info getting failed", rv);
-	    return -1;
+	    VOH_ERROR(err, "Reading sensor failed", rv);
+	    return FALSE;
       }
 
       if (rdr.RdrType != SAHPI_SENSOR_RDR) {
-	    VOH_ERROR(err, "Rdr entry isn't sensor", -1);
-	    return -1;
+	    VOH_ERROR(err, "Reading sensor failed (invalid argument)", -1);
+	    return FALSE;
       }
 
       sensor = &(rdr.RdrTypeUnion.SensorRec);
 
-      rv = saHpiSensorReadingGet(sessionid, (SaHpiResourceIdT)rid,
-				 sensor->Num, &reading, NULL);
+      rv = saHpiSensorReadingGet(sid, resourceid, sensor->Num, &reading, NULL);
       if (rv != SA_OK) {
-	    VOH_ERROR(err, "reading sensor failed", rv);
-	    return -1;
+	    VOH_ERROR(err, "Reading sensor failed", rv);
+	    return FALSE;
       }
 
       state = voh_get_sensor_state(sensor, &reading);
@@ -545,7 +661,7 @@ gint voh_read_sensor(GtkTreeStore *store, guint id, gchar *err)
       gtk_tree_store_set(store, &child,
 			 VOH_LIST_COLUMN_NAME,
 			 	vohSensorValue2FullString(sensor, &reading),
-			 VOH_LIST_COLUMN_ID, id,
+			 VOH_LIST_COLUMN_ID, entryid,
 			 VOH_LIST_COLUMN_TYPE, VOH_ITER_IS_VALUE,
 			 VOH_LIST_COLUMN_STATE, state,
 			 -1);
@@ -553,15 +669,16 @@ gint voh_read_sensor(GtkTreeStore *store, guint id, gchar *err)
 			 VOH_LIST_COLUMN_STATE, state,
 			 -1);
 
-      return 0;
+      return TRUE;
 }
 
-GtkTreeModel *voh_list_resources(gchar *err)
+GtkTreeModel *voh_list_resources(guint sessionid, gchar *err)
 {
       GtkTreeStore	*pstore;
       SaHpiEntryIdT	rptentryid, nextrptentryid;
       SaErrorT		ret;
       SaHpiRptEntryT	rptentry;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
 
       pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
 				  GDK_TYPE_PIXBUF, G_TYPE_UINT, G_TYPE_UINT,
@@ -569,45 +686,52 @@ GtkTreeModel *voh_list_resources(gchar *err)
 
       rptentryid = SAHPI_FIRST_ENTRY;
       while (rptentryid != SAHPI_LAST_ENTRY) {
-	    ret = saHpiRptEntryGet(sessionid, rptentryid, &nextrptentryid,
-				   &rptentry);
-	    if (ret != SA_OK)
-		  return(NULL);
-	    voh_add_resource(pstore, &rptentry);
-	    voh_list_rdrs(pstore, rptentry.ResourceId, err);
+	    ret = saHpiRptEntryGet(sid, rptentryid, &nextrptentryid, &rptentry);
+	    if (ret != SA_OK) {
+		  break;
+	    }
+	    voh_add_resource(pstore, sessionid, &rptentry);
+	    voh_list_rdrs(pstore, sessionid, (guint)rptentry.ResourceId, err);
 	    rptentryid = nextrptentryid;
       }
 
       return (GTK_TREE_MODEL(pstore));
 }
 
-int voh_list_rdrs(GtkTreeStore *pstore, SaHpiResourceIdT rid, gchar *err)
+gboolean voh_list_rdrs(GtkTreeStore *pstore, guint sessionid,
+		       guint resourceid, gchar *err)
 {
       SaHpiRdrT			rdr;
       SaErrorT			ret;
       SaHpiEntryIdT		entryid;
       SaHpiEntryIdT		nextentryid;
+      SaHpiSessionIdT		sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT		rid = (SaHpiResourceIdT)resourceid;
 
       entryid = SAHPI_FIRST_ENTRY;
       while (entryid != SAHPI_LAST_ENTRY) {
-	    ret = saHpiRdrGet(sessionid, rid, entryid, &nextentryid, &rdr);
+	    ret = saHpiRdrGet(sid, rid, entryid, &nextentryid, &rdr);
 	    if (ret != SA_OK)
-		  return(-1);
-	    voh_add_rdr(pstore, &rdr, rid);
+		  return FALSE;
+	    voh_add_rdr(pstore, &rdr, resourceid);
 	    entryid = nextentryid;
       }
+      return TRUE;
 }
 
-void voh_add_resource(GtkTreeStore *pstore,
+void voh_add_resource(GtkTreeStore *pstore, guint sessionid,
 		      SaHpiRptEntryT *rpt)
 {
       SaErrorT		rv;
       SaHpiPowerStateT	power;
       SaHpiResetActionT	reset;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
       GtkTreeIter	iter,	parent,	*found_iter;
       gint		i;
       guint		id,	type;
       gboolean		res,	first = TRUE;
+      GdkPixbuf		*image = NULL;
+      GError		*error = NULL;
       SaHpiEntityPathT	entity_path = rpt->ResourceEntity;
       guint		state = 0;
       gchar		path[100];
@@ -625,8 +749,8 @@ void voh_add_resource(GtkTreeStore *pstore,
 		  vohEntityPath2String(&(entity_path.Entry[i]), path);
 
 		  res = find_iter_by_name(GTK_TREE_MODEL(pstore),
-						 VOH_LIST_COLUMN_NAME,
-						 path, &parent);
+					  VOH_LIST_COLUMN_NAME,
+					  path, &parent);
 		  if (res == FALSE)
 			break;
 		  else
@@ -654,24 +778,39 @@ void voh_add_resource(GtkTreeStore *pstore,
 	    }
 
 	    if (rpt->ResourceCapabilities & SAHPI_CAPABILITY_POWER) {
-		  rv = saHpiResourcePowerStateGet(sessionid,
-					(SaHpiResourceIdT)id, &power);
+		  rv = saHpiResourcePowerStateGet(sid, (SaHpiResourceIdT)id,
+						  &power);
 		  if (rv == SA_OK) {
 			switch (power) {
 			  case SAHPI_POWER_ON:
 			      state |= VOH_ITER_RPT_STATE_POWER_ON;
+			      image = gdk_pixbuf_new_from_file(
+					find_pixmap_file("on.png"), &error);
 			      break;
 			  case SAHPI_POWER_OFF:
 			      state |= VOH_ITER_RPT_STATE_POWER_OFF;
+			      image = gdk_pixbuf_new_from_file(
+					find_pixmap_file("off.png"), &error);
 			      break;
+			}
+			if (error) {
+			      g_critical ("Could not load pixbuf: %s\n",
+					  error->message);
+			      g_error_free(error);
+			}
+			if (image) {
+			      gtk_tree_store_set(GTK_TREE_STORE(pstore), &iter,
+						 VOH_LIST_COLUMN_ICON, image,
+						 -1);
+			      g_object_unref(image);
 			}
 		  }
 	    }
 
 	    if (rpt->ResourceCapabilities & SAHPI_CAPABILITY_RESET) {
-		  rv = saHpiResourceResetStateGet(sessionid,
-					(SaHpiResourceIdT)id, &reset);
-		  if (rv == SA_OK) {
+		  rv = saHpiResourceResetStateGet(sid, (SaHpiResourceIdT)id,
+						  &reset);
+		  if (rv == SA_OK) { 
 			switch (reset) {
 			  case SAHPI_RESET_ASSERT:
 			      state |= VOH_ITER_RPT_STATE_RESET_ASSERT;
@@ -694,9 +833,7 @@ void voh_add_resource(GtkTreeStore *pstore,
       }
 }
 
-void voh_add_rdr(GtkTreeStore *pstore,
-		 SaHpiRdrT *rdr,
-		 SaHpiResourceIdT rid)
+void voh_add_rdr(GtkTreeStore *pstore, SaHpiRdrT *rdr, guint resourceid)
 {
       gboolean		res;
       GtkTreeIter	iter,	parent;
@@ -709,7 +846,7 @@ void voh_add_rdr(GtkTreeStore *pstore,
 	    return;
 
       res = find_iter_by_id(GTK_TREE_MODEL(pstore), VOH_LIST_COLUMN_ID,
-			    (guint)rid, &parent);
+			    resourceid, &parent);
       if (res != FALSE) {
 	    strptr = rdr->IdString;
 	    fixstr(&strptr, name);
@@ -738,17 +875,15 @@ void voh_add_rdr(GtkTreeStore *pstore,
 	    gtk_tree_store_append(pstore, &iter, &parent);
 	    gtk_tree_store_set(pstore, &iter,
 			       VOH_LIST_COLUMN_NAME, name,
-			       VOH_LIST_COLUMN_ID, rdr->RecordId,
+			       VOH_LIST_COLUMN_ID, (guint)rdr->RecordId,
 			       VOH_LIST_COLUMN_TYPE, type,
 			       VOH_LIST_COLUMN_STATE, state,
 			       -1);
       }
 }
 
-gboolean find_iter_by_id(GtkTreeModel *model,
-			 guint column_num,
-			 guint req_id,
-			 GtkTreeIter *iter)
+gboolean find_iter_by_id(GtkTreeModel *model, guint column_num,
+			 guint req_id, GtkTreeIter *iter)
 {
       gboolean		res = TRUE;
       guint		id;
@@ -773,10 +908,8 @@ gboolean find_iter_by_id(GtkTreeModel *model,
 }
 
 
-gboolean find_iter_by_name(GtkTreeModel *model,
-			   guint column_num,
-			   const gchar *req_name,
-			   GtkTreeIter *iter)
+gboolean find_iter_by_name(GtkTreeModel *model, guint column_num,
+			   const gchar *req_name, GtkTreeIter *iter)
 {
       gboolean		res = TRUE;
       gchar		*name;
@@ -913,14 +1046,25 @@ guint voh_get_sensor_state(SaHpiSensorRecT *sensor, SaHpiSensorReadingT *sv)
       return state;
 }
 
-
-gboolean voh_get_power_state(guint id, GtkWidget *menu, gchar *err)
+/*
+gboolean voh_get_power_state(guint domainid, guint resourceid,
+			     GtkWidget *menu, gchar *err)
 {
       SaErrorT		rv;
       SaHpiPowerStateT	power;
+      SaHpiDomainIdT	did = (SaHpiDomainIdT)domainid;
+      SaHpiResourceIdT	rid = (SaHpiResourceIdT)resourceid;
       GtkWidget		*sitem, *item;
-      
-      rv = saHpiResourcePowerStateGet(sessionid, (SaHpiResourceIdT)id, &power);
+      VohDomainsT	*domain;
+
+      domain = v_find_domain(did, domains);
+      if (domain == NULL) {
+	    VOH_ERROR(err, "Power state getting getting failed \
+		      				(invalid argument)", -1);
+	    return FALSE;
+      }
+
+      rv = saHpiResourcePowerStateGet(domain->sessionid, rid, &power);
       item = gtk_radio_menu_item_new_with_mnemonic(NULL, "none");
 //      gtk_container_add(GTK_CONTAINER(menu), sitem);
 
@@ -945,14 +1089,21 @@ gboolean voh_get_power_state(guint id, GtkWidget *menu, gchar *err)
       }
       return TRUE;
 }
+*/
 
-gboolean voh_set_power_off(guint id, GtkTreeStore *store, gchar *err)
+gboolean voh_set_power_off(guint sessionid, guint resourceid,
+			   GtkTreeStore *store, gchar *err)
 {
       SaErrorT		rv;
       SaHpiPowerStateT	power;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT	rid = (SaHpiResourceIdT)resourceid;
       GtkTreeIter	iter;
+      GdkPixbuf		*image = NULL;
+      GError		*error = NULL;
       guint		state;
       gboolean		res;
+      guint		i;
 
       if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter)
 	  							== FALSE) {
@@ -960,14 +1111,13 @@ gboolean voh_set_power_off(guint id, GtkTreeStore *store, gchar *err)
 	    return FALSE;
       }
       res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
-			    id, &iter);
+			    resourceid, &iter);
       if (res == FALSE) {
 	    VOH_ERROR(err, "Power state setting failed (invalid resource id)",
 		      -1);
 	    return FALSE;
       }
-      rv = saHpiResourcePowerStateSet(sessionid, (SaHpiResourceIdT)id,
-				      SAHPI_POWER_OFF);
+      rv = saHpiResourcePowerStateSet(sid, rid, SAHPI_POWER_OFF);
       if (rv != SA_OK) {
 	    VOH_ERROR(err, "Power state setting failed", rv);
 	    return FALSE;
@@ -977,9 +1127,19 @@ gboolean voh_set_power_off(guint id, GtkTreeStore *store, gchar *err)
 			 VOH_LIST_COLUMN_STATE, &state,
 			 -1);
 
-      rv = saHpiResourcePowerStateGet(sessionid, (SaHpiResourceIdT)id, &power);
-      if (rv != SA_OK || power != SAHPI_POWER_OFF) {
-	    return TRUE;
+      for (i = 1; i < 4; i++) {
+	    rv = saHpiResourcePowerStateGet(sid, rid, &power);
+	    if (rv != SA_OK) {
+		  VOH_ERROR(err, "Power state setting failed", rv);
+		  return FALSE;
+	    }
+	    if (power != SAHPI_POWER_OFF) {
+		  sleep (i * 3);
+	    }
+      }
+      if (power != SAHPI_POWER_OFF) {
+	    VOH_ERROR(err, "Power state setting failed (unknown)", -1);
+	    return FALSE;
       }
       state &=~VOH_ITER_RPT_STATE_POWER_ON;
       state |= VOH_ITER_RPT_STATE_POWER_OFF;
@@ -987,16 +1147,34 @@ gboolean voh_set_power_off(guint id, GtkTreeStore *store, gchar *err)
       gtk_tree_store_set(store, &iter,
 			 VOH_LIST_COLUMN_STATE, state,
 			 -1);
+
+      image = gdk_pixbuf_new_from_file(find_pixmap_file("off.png"), &error);
+      if (error) {
+	    g_critical ("Could not load pixbuf: %s\n", error->message);
+	    g_error_free(error);
+      }
+      if (image) {
+	    gtk_tree_store_set(store, &iter,
+			       VOH_LIST_COLUMN_ICON, image,
+			       -1);
+	    g_object_unref(image);
+      }
       return TRUE;
 }
 
-gboolean voh_set_power_on(guint id, GtkTreeStore *store, gchar *err)
+gboolean voh_set_power_on(guint sessionid, guint resourceid,
+			  GtkTreeStore *store, gchar *err)
 {
       SaErrorT		rv;
       SaHpiPowerStateT	power;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT	rid = (SaHpiResourceIdT)resourceid;
       GtkTreeIter	iter;
+      GdkPixbuf		*image = NULL;
+      GError		*error = NULL;
       guint		state;
       gboolean		res;
+      guint		i;
 
       if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter)
 	  							== FALSE) {
@@ -1004,23 +1182,32 @@ gboolean voh_set_power_on(guint id, GtkTreeStore *store, gchar *err)
 	    return FALSE;
       }
       res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
-			    id, &iter);
+			    resourceid, &iter);
       if (res == FALSE) {
-	    VOH_ERROR(err, "Power state setting failed (invalid resource id)",
+	    VOH_ERROR(err, "Power state setting failed (invalid argument)",
 		      -1);
 	    return FALSE;
       }
-      rv = saHpiResourcePowerStateSet(sessionid, (SaHpiResourceIdT)id,
-				      SAHPI_POWER_ON);
+      rv = saHpiResourcePowerStateSet(sid, rid, SAHPI_POWER_ON);
       if (rv != SA_OK) {
 	    VOH_ERROR(err, "Power state setting failed", rv);
 	    return FALSE;
       }
 
 
-      rv = saHpiResourcePowerStateGet(sessionid, (SaHpiResourceIdT)id, &power);
-      if (rv != SA_OK || power != SAHPI_POWER_ON) {
-	    return TRUE;
+      for (i = 1; i < 4; i++) {
+	    rv = saHpiResourcePowerStateGet(sid, rid, &power);
+	    if (rv != SA_OK) {
+		  VOH_ERROR(err, "Power state setting failed", rv);
+		  return FALSE;
+	    }
+	    if (power != SAHPI_POWER_ON) {
+		  sleep (i * 3);
+	    }
+      }
+      if (power != SAHPI_POWER_ON) {
+	    VOH_ERROR(err, "Power state setting failed (unknown)", -1);
+	    return FALSE;
       }
       gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
 			 VOH_LIST_COLUMN_STATE, &state,
@@ -1030,16 +1217,33 @@ gboolean voh_set_power_on(guint id, GtkTreeStore *store, gchar *err)
       gtk_tree_store_set(store, &iter,
 			 VOH_LIST_COLUMN_STATE, state,
 			 -1);
+      image = gdk_pixbuf_new_from_file(find_pixmap_file("on.png"), &error);
+      if (error) {
+	    g_critical ("Could not load pixbuf: %s\n", error->message);
+	    g_error_free(error);
+      }
+      if (image) {
+	    gtk_tree_store_set(store, &iter,
+			       VOH_LIST_COLUMN_ICON, image,
+			       -1);
+	    g_object_unref(image);
+      }
       return TRUE;
 }
 
-gboolean voh_set_power_cycle(guint id, GtkTreeStore *store, gchar *err)
+gboolean voh_set_power_cycle(guint sessionid, guint resourceid,
+			     GtkTreeStore *store, gchar *err)
 {
       SaErrorT		rv;
       SaHpiPowerStateT	power;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT	rid = (SaHpiResourceIdT)resourceid;
       GtkTreeIter	iter;
+      GdkPixbuf		*image = NULL;
+      GError		*error = NULL;
       guint		state;
       gboolean		res;
+      guint		i;
 
       if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter)
 	  							== FALSE) {
@@ -1047,23 +1251,28 @@ gboolean voh_set_power_cycle(guint id, GtkTreeStore *store, gchar *err)
 	    return FALSE;
       }
       res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
-			    id, &iter);
+			    resourceid, &iter);
       if (res == FALSE) {
 	    VOH_ERROR(err, "Power state setting failed (invalid resource id)",
 		      -1);
 	    return FALSE;
       }
-      rv = saHpiResourcePowerStateSet(sessionid, (SaHpiResourceIdT)id,
-				      SAHPI_POWER_CYCLE);
+      rv = saHpiResourcePowerStateSet(sid, rid, SAHPI_POWER_CYCLE);
       if (rv != SA_OK) {
 	    VOH_ERROR(err, "Power state setting failed", rv);
 	    return FALSE;
       }
 
 
-      rv = saHpiResourcePowerStateGet(sessionid, (SaHpiResourceIdT)id, &power);
-      if (rv != SA_OK) {
-	    return TRUE;
+      for (i = 1; i < 4; i++) {
+	    rv = saHpiResourcePowerStateGet(sid, rid, &power);
+	    if (rv != SA_OK) {
+		  VOH_ERROR(err, "Power state setting failed", rv);
+		  return FALSE;
+	    }
+	    if (power != SAHPI_POWER_ON) {
+		  sleep (i * 5);
+	    }
       }
       gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
 			 VOH_LIST_COLUMN_STATE, &state,
@@ -1071,20 +1280,41 @@ gboolean voh_set_power_cycle(guint id, GtkTreeStore *store, gchar *err)
       if (power == SAHPI_POWER_ON) {
 	    state &=~VOH_ITER_RPT_STATE_POWER_OFF;
 	    state |= VOH_ITER_RPT_STATE_POWER_ON;
+	    image = gdk_pixbuf_new_from_file(find_pixmap_file("on.png"),
+					     &error);
       } else if (power == SAHPI_POWER_OFF) {
 	    state &=~VOH_ITER_RPT_STATE_POWER_ON;
 	    state |= VOH_ITER_RPT_STATE_POWER_OFF;
+	    image = gdk_pixbuf_new_from_file(find_pixmap_file("off.png"),
+					     &error);
       }
+
+      if (error) {
+	    g_critical ("Could not load pixbuf: %s\n", error->message);
+	    g_error_free(error);
+      }
+ 
       gtk_tree_store_set(store, &iter,
 			 VOH_LIST_COLUMN_STATE, state,
+			 VOH_LIST_COLUMN_ICON, image,
 			 -1);
+      if (image) {
+	    g_object_unref(image);
+      }
+      if (power != SAHPI_POWER_ON) {
+	    VOH_ERROR(err, "Power state setting failed (unknown)", -1);
+	    return FALSE;
+      }
       return TRUE;
 }
 
-gboolean voh_set_reset_cold(guint id, GtkTreeStore *store, gchar *err)
+gboolean voh_set_reset_cold(guint sessionid, guint resourceid,
+			    GtkTreeStore *store, gchar *err)
 {
       SaErrorT		rv;
       SaHpiResetActionT	reset;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT	rid = (SaHpiResourceIdT)resourceid;
       GtkTreeIter	iter;
       guint		state;
       gboolean		res;
@@ -1095,21 +1325,20 @@ gboolean voh_set_reset_cold(guint id, GtkTreeStore *store, gchar *err)
 	    return FALSE;
       }
       res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
-			    id, &iter);
+			    resourceid, &iter);
       if (res == FALSE) {
 	    VOH_ERROR(err, "Reset state setting failed (invalid resource id)",
 		      -1);
 	    return FALSE;
       }
-      rv = saHpiResourceResetStateSet(sessionid, (SaHpiResourceIdT)id,
-				      SAHPI_COLD_RESET);
+      rv = saHpiResourceResetStateSet(sid, rid, SAHPI_COLD_RESET);
       if (rv != SA_OK) {
 	    VOH_ERROR(err, "Reset state setting failed", rv);
 	    return FALSE;
       }
 
 
-      rv = saHpiResourceResetStateGet(sessionid, (SaHpiResourceIdT)id, &reset);
+      rv = saHpiResourceResetStateGet(sid, rid, &reset);
       if (rv != SA_OK) {
 	    return TRUE;
       }
@@ -1129,10 +1358,13 @@ gboolean voh_set_reset_cold(guint id, GtkTreeStore *store, gchar *err)
       return TRUE;
 }
 
-gboolean voh_set_reset_warm(guint id, GtkTreeStore *store, gchar *err)
+gboolean voh_set_reset_warm(guint sessionid, guint resourceid,
+			    GtkTreeStore *store, gchar *err)
 {
       SaErrorT		rv;
       SaHpiResetActionT	reset;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT	rid = (SaHpiResourceIdT)resourceid;
       GtkTreeIter	iter;
       guint		state;
       gboolean		res;
@@ -1143,21 +1375,20 @@ gboolean voh_set_reset_warm(guint id, GtkTreeStore *store, gchar *err)
 	    return FALSE;
       }
       res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
-			    id, &iter);
+			    resourceid, &iter);
       if (res == FALSE) {
 	    VOH_ERROR(err, "Reset state setting failed (invalid resource id)",
 		      -1);
 	    return FALSE;
       }
-      rv = saHpiResourceResetStateSet(sessionid, (SaHpiResourceIdT)id,
-				      SAHPI_WARM_RESET);
+      rv = saHpiResourceResetStateSet(sid, rid, SAHPI_WARM_RESET);
       if (rv != SA_OK) {
 	    VOH_ERROR(err, "Reset state setting failed", rv);
 	    return FALSE;
       }
 
 
-      rv = saHpiResourceResetStateGet(sessionid, (SaHpiResourceIdT)id, &reset);
+      rv = saHpiResourceResetStateGet(sid, rid, &reset);
       if (rv != SA_OK) {
 	    return TRUE;
       }
@@ -1177,10 +1408,13 @@ gboolean voh_set_reset_warm(guint id, GtkTreeStore *store, gchar *err)
       return TRUE;
 }
 
-gboolean voh_set_reset_assert(guint id, GtkTreeStore *store, gchar *err)
+gboolean voh_set_reset_assert(guint sessionid, guint resourceid,
+			      GtkTreeStore *store, gchar *err)
 {
       SaErrorT		rv;
       SaHpiResetActionT	reset;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT	rid = (SaHpiResourceIdT)resourceid;
       GtkTreeIter	iter;
       guint		state;
       gboolean		res;
@@ -1191,21 +1425,20 @@ gboolean voh_set_reset_assert(guint id, GtkTreeStore *store, gchar *err)
 	    return FALSE;
       }
       res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
-			    id, &iter);
+			    resourceid, &iter);
       if (res == FALSE) {
 	    VOH_ERROR(err, "Reset state setting failed (invalid resource id)",
 		      -1);
 	    return FALSE;
       }
-      rv = saHpiResourceResetStateSet(sessionid, (SaHpiResourceIdT)id,
-				      SAHPI_RESET_ASSERT);
+      rv = saHpiResourceResetStateSet(sid, rid, SAHPI_RESET_ASSERT);
       if (rv != SA_OK) {
 	    VOH_ERROR(err, "Reset state setting failed", rv);
 	    return FALSE;
       }
 
 
-      rv = saHpiResourceResetStateGet(sessionid, (SaHpiResourceIdT)id, &reset);
+      rv = saHpiResourceResetStateGet(sid, rid, &reset);
       if (rv != SA_OK) {
 	    return TRUE;
       }
@@ -1225,10 +1458,13 @@ gboolean voh_set_reset_assert(guint id, GtkTreeStore *store, gchar *err)
       return TRUE;
 }
 
-gboolean voh_set_reset_deassert(guint id, GtkTreeStore *store, gchar *err)
+gboolean voh_set_reset_deassert(guint sessionid, guint resourceid,
+				GtkTreeStore *store, gchar *err)
 {
       SaErrorT		rv;
       SaHpiResetActionT	reset;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT	rid = (SaHpiResourceIdT)resourceid;
       GtkTreeIter	iter;
       guint		state;
       gboolean		res;
@@ -1239,21 +1475,20 @@ gboolean voh_set_reset_deassert(guint id, GtkTreeStore *store, gchar *err)
 	    return FALSE;
       }
       res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
-			    id, &iter);
+			    resourceid, &iter);
       if (res == FALSE) {
 	    VOH_ERROR(err, "Reset state setting failed (invalid resource id)",
 		      -1);
 	    return FALSE;
       }
-      rv = saHpiResourceResetStateSet(sessionid, (SaHpiResourceIdT)id,
-				      SAHPI_RESET_DEASSERT);
+      rv = saHpiResourceResetStateSet(sid, rid, SAHPI_RESET_DEASSERT);
       if (rv != SA_OK) {
 	    VOH_ERROR(err, "Reset state setting failed", rv);
 	    return FALSE;
       }
 
 
-      rv = saHpiResourceResetStateGet(sessionid, (SaHpiResourceIdT)id, &reset);
+      rv = saHpiResourceResetStateGet(sid, rid, &reset);
       if (rv != SA_OK) {
 	    return TRUE;
       }
@@ -1271,5 +1506,128 @@ gboolean voh_set_reset_deassert(guint id, GtkTreeStore *store, gchar *err)
 			 VOH_LIST_COLUMN_STATE, state,
 			 -1);
       return TRUE;
+}
+
+gboolean voh_subscribe_events(guint sessionid, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+
+      rv = saHpiSubscribe(sid);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Event subscribing failed", rv);
+	    return FALSE;
+      }
+      return TRUE;
+}
+
+gboolean voh_unsubscribe_events(guint sessionid, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+
+      rv = saHpiUnsubscribe(sid);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Event unsubscribing failed", rv);
+	    return FALSE;
+      }
+      return TRUE;
+}
+
+gboolean voh_get_events(GtkTreeStore *event_list, guint sessionid, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiEventT	event;
+      GtkTreeIter	iter;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+      SaHpiDomainInfoT	info;
+      gchar		name[1024];
+      gchar		time[1024];
+      gchar		source[1024];
+      gchar		severity[1024];
+      gchar		type[1024];
+      gchar		domn[1024];
+
+      if (event_list == NULL) {
+	    VOH_ERROR(err, "Event getting failed (invalid parameter)", -1);
+	    return FALSE;
+      }
+ 
+	    rv = saHpiEventGet(sid, SAHPI_TIMEOUT_IMMEDIATE,
+			       &event, NULL, NULL, NULL);
+	    if (rv == SA_OK) {
+		  gtk_tree_store_append(event_list, &iter, NULL);
+		  sprintf(name, "%s event",
+			  vohEventType2String(event.EventType));
+		  sprintf(time, "%s", vohTime2String(event.Timestamp));
+		  sprintf(source, "ResourceId: (%ld)", event.Source);
+		  sprintf(severity, "%s", vohSeverity2String(event.Severity));
+
+		  rv = saHpiDomainInfoGet(sid, &info);
+		  if (rv == SA_OK) {
+			info.DomainTag;
+			fixstr(&(info.DomainTag), domn);
+		  } else {
+			sprintf(domn, "unknown");
+		  }
+
+		  switch (event.EventType) {
+		    case SAHPI_ET_RESOURCE:
+			sprintf(type, "%s",
+				vohResourceEventType2String(
+				  event.EventDataUnion.ResourceEvent. \
+				  			ResourceEventType));
+			break;
+		    case SAHPI_ET_DOMAIN:
+			sprintf(type, "%s",
+				vohDomainEventType2String(
+				  event.EventDataUnion.DomainEvent.Type));
+			break;
+		    case SAHPI_ET_SENSOR:
+			if (event.EventDataUnion.SensorEvent.Assertion == TRUE)
+			      sprintf(type, "asserted");
+			else
+			      sprintf(type, "deasserted");
+			break;
+		    case SAHPI_ET_SENSOR_ENABLE_CHANGE:
+			type[0] = 0;
+			break;
+		    case SAHPI_ET_HOTSWAP:
+			type[0] = 0;
+			break;
+		    case SAHPI_ET_WATCHDOG:
+			type[0] = 0;
+			break;
+		    case SAHPI_ET_HPI_SW:
+			sprintf(type, "%s",
+				vohSwEventType2String(
+				  event.EventDataUnion.HpiSwEvent.Type));
+			break;
+		    case SAHPI_ET_OEM:
+			type[0] = 0;
+			break;
+		    case SAHPI_ET_USER:
+			type[0] = 0;
+			break;
+		    default:
+			sprintf(type, "unknown");
+		  }
+		  gtk_tree_store_set(event_list, &iter,
+				     VOH_EVENT_LIST_COLUMN_TIME, time,
+				     VOH_EVENT_LIST_COLUMN_NAME, name,
+				     VOH_EVENT_LIST_COLUMN_SOURCE, source,
+				     VOH_EVENT_LIST_COLUMN_SEVER, severity,
+				     VOH_EVENT_LIST_COLUMN_TYPE, type,
+				     VOH_EVENT_LIST_COLUMN_DOMAIN, domn,
+				     -1);
+		  return TRUE;
+	    }
+	    if (rv == SA_ERR_HPI_TIMEOUT) {
+		  return TRUE;
+	    }
+	    else {
+		  VOH_ERROR(err, "Event getting failed", rv);
+		  return FALSE;
+	    }
 }
 

@@ -26,6 +26,12 @@
 #define HVIEW_TITLE			"OpenHpi View"
 #define HVIEW_DOMAIN_COLUMN_TITLE	"\tDomains"
 #define HVIEW_RESOURCE_COLUMN_TITLE	"\tResources"
+#define HVIEW_EVENT_LIST_TITLE		"\tEvents\t"
+#define HVIEW_EVENT_TIME_TITLE		"\tTime \t"
+#define HVIEW_EVENT_SOURCE_TITLE	"\tSource\t"
+#define HVIEW_EVENT_SEVERITY_TITLE	"\tSeverity\t"
+#define HVIEW_EVENT_TYPE_TITLE		"\tType \t"
+#define HVIEW_EVENT_DOMAIN_TITLE	"\tDomain\t"
 
 #define HVIEW_MAIN_WINDOW_WIDTH		700
 #define HVIEW_MAIN_WINDOW_HEIGHT	600
@@ -40,31 +46,44 @@
 
 #define HVIEW_MAX_TAB_WINDOWS		100
 
+/*
+typedef struct HviewEventThrData {
+      GtkWidget		*event_view;
+      guint		sessionid;
+} HviewEventThrDataT;
+*/
 
-typedef struct HviewTabs
-{
+typedef struct HviewTabs {
       GtkWidget		*tree_view;
       GtkWidget		*detail_view;
+      guint		sessionid;
+      gboolean		event_subscribed;
+      guint		event_funcsource;
 } HviewTabsT;
 
 typedef struct HviewWidgets
 {
       GtkWidget		*main_window;
       GtkWidget		*domain_window;
-      GtkWidget		*log_window;
+      GtkWidget		*message_window;
       GtkWidget		*event_window;
       GtkWidget		*statusbar;
       GtkWidget		*toolbar;
       GtkWidget		*vtoolbar;
+      GtkWidget		*tglbar;
+
+      GtkWidget		*log_hbox;
 
       GtkWidget		*tab_windows;
       HviewTabsT	tab_views[HVIEW_MAX_TAB_WINDOWS];
 
       GtkWidget		*domain_view;
-      GtkWidget		*log_view;
+      GtkWidget		*message_view;
       GtkWidget		*event_view;
 
-      GtkToolItem	*rsitem;
+      GtkTreeStore	*event_list;
+
+      GtkToolItem	*subev_item;
 
       guint		iter_id;
 } HviewWidgetsT;
@@ -87,7 +106,8 @@ void add_pixmap_directory(const gchar *directory);
 gchar* find_pixmap_file(const gchar *filename);
 GtkWidget *create_pixmap(const gchar *filename);
 
-GtkWidget *hview_get_log_window(HviewWidgetsT *w);
+GtkWidget *hview_get_toggle_bar(HviewWidgetsT *w);
+GtkWidget *hview_get_message_window(HviewWidgetsT *w);
 GtkWidget *hview_get_event_window(HviewWidgetsT *w);
 GtkWidget *hview_get_domain_window(HviewWidgetsT *w);
 GtkWidget *hview_get_detail_window(HviewWidgetsT *w, gint page);
