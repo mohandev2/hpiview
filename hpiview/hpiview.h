@@ -21,10 +21,5 @@
 static void hview_init(void);
 static void hview_fini(void);
 
-static GtkWidget *hview_get_log_window(HviewWidgetsT *w);
-static GtkWidget *hview_get_detail_window(HviewWidgetsT *w);
-static GtkWidget *hview_get_tree_window(HviewWidgetsT *w);
-static GtkWidget *hview_get_menubar(HviewWidgetsT *w);
-static GtkWidget *hview_get_toolbar(HviewWidgetsT *w);
-
 #endif /* __HPIVIEW_H__ */
+

@@ -6,14 +6,28 @@ enum {
       VOH_LIST_COLUMN_NAME = 0,
       VOH_LIST_COLUMN_ID,
       VOH_LIST_COLUMN_TYPE,
+      VOH_LIST_COLUMN_STATE,
       VOH_LIST_NUM_COL,
 };
 
 enum {
       VOH_ITER_IS_DOMAIN,
       VOH_ITER_IS_RPT,
-      VOH_ITER_IS_RDR,
+      VOH_ITER_IS_CONTROL,
+      VOH_ITER_IS_SENSOR,
+      VOH_ITER_IS_INVENTORY,
+      VOH_ITER_IS_WATCHDOG,
+      VOH_ITER_IS_ANNUNCIATOR,
+      VOH_ITER_IS_NO_RECORD,
+      VOH_ITER_IS_VALUE,
       VOH_ITER_IS_PATH,
+};
+
+enum {
+      VOH_ITER_SENSOR_STATE_UNSPECIFIED = 0,
+      VOH_ITER_SENSOR_STATE_NOMINAL,
+      VOH_ITER_SENSOR_STATE_NORMAL,
+      VOH_ITER_SENSOR_STATE_CRITICAL,
 };
       
 int voh_init(gchar *err);
@@ -24,7 +38,7 @@ int voh_list_rdrs(GtkTreeStore *pstore, SaHpiResourceIdT rid, gchar *err);
 GtkTreeModel *voh_domain_info(gchar *err);
 GtkTreeModel *voh_resource_info(guint id, gchar *err);
 GtkTreeModel *voh_rdr_info(guint rid, guint id, gchar *err);
-gchar *voh_read_sensor(guint rid, guint id, gchar *err);
+gint voh_read_sensor(GtkTreeStore *store, guint id, gchar *err);
 
 void voh_add_resource(GtkTreeStore *pstore,
 		      SaHpiRptEntryT *rpt);
@@ -39,3 +53,7 @@ gboolean find_iter_by_id(GtkTreeModel *model,
 			 guint column_num,
 			 guint req_id,
 			 GtkTreeIter *iter);
+
+guint voh_get_sensor_state(SaHpiSensorRecT *sensor, SaHpiSensorReadingT *sv);
+
+

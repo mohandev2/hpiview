@@ -53,22 +53,48 @@ void hview_unload_plugin_call(GtkWidget *widget, gpointer data)
       hview_print(w, "\"Unload plugin\" is not supported yet");
 }
 
+void hview_session_close_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT	*w = (HviewWidgetsT *) data;
+      gint		page;
+
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return;
+      gtk_notebook_remove_page(GTK_NOTEBOOK(w->tab_windows), page);
+
+      w->tab_views[page].tree_view = w->tab_views[page].detail_view = NULL;
+
+      gtk_widget_queue_draw(w->tab_windows);
+}
+
 gint hview_discover_thread(gpointer data)
 {
       HviewWidgetsT	*w = (HviewWidgetsT *) data;
-      GtkTreeModel	*domains;
+      GtkTreeModel	*res;
+      GtkWidget		*tview;
+      gint		page;
       gchar		err[100];
+
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return FALSE;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return FALSE;
+      tview = w->tab_views[page].tree_view;
 
       if (voh_init(err) == -1) {
 	    hview_statusbar_push(w, "discovering failed");
 	    hview_print(w, err);
       } else {
-	    domains = voh_list_domains(err);
-	    if (domains == NULL)
+	    res = voh_list_resources(err);
+	    if (res == NULL)
 		  hview_print(w, err);
-	    gtk_tree_view_set_model(GTK_TREE_VIEW(w->tree_view), domains);
-	    if (domains)
-		  g_object_unref(domains);
+	    else {
+		  gtk_tree_view_set_model(GTK_TREE_VIEW(tview), res);
+		  g_object_unref(res);
+	    }
 	    hview_statusbar_push(w, "ready");
       }
       
@@ -82,13 +108,21 @@ void hview_discover_call(GtkWidget *widget, gpointer data)
       HviewWidgetsT	*w = (HviewWidgetsT *) data;
       GtkTreeModel	*domains;
       GtkTreeViewColumn	*column;
+      GtkWidget		*tview,	*dview;
+      gint		page;
       gchar		err[100];
 
-      column = gtk_tree_view_get_column(GTK_TREE_VIEW(w->tree_view), 0);
-      gtk_tree_view_column_set_title(column, HVIEW_DOMAIN_COLUMN_TITLE);
-      gtk_window_set_title(GTK_WINDOW(w->main_window), HVIEW_TITLE);
-      gtk_tree_view_set_model(GTK_TREE_VIEW(w->tree_view), NULL);
-      gtk_tree_view_set_model(GTK_TREE_VIEW(w->detail_view), NULL);
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return;
+      tview = w->tab_views[page].tree_view;
+      dview = w->tab_views[page].detail_view;
+
+      gtk_tree_view_set_model(GTK_TREE_VIEW(tview), NULL);
+      gtk_tree_view_set_model(GTK_TREE_VIEW(dview), NULL);
 
       voh_fini(NULL);
       hview_statusbar_push(w, "discovering (please wait)");
@@ -127,78 +161,15 @@ void hview_about_call(void)
       gtk_widget_show(dialog_window);
 }
 
-void hview_tree_column_activated_call(GtkTreeViewColumn *column,
-					     gpointer data)
-{
-      HviewWidgetsT	*w = (HviewWidgetsT *) data;
-      gchar		*name = NULL;
-      int		state;
-      GtkTreeSelection	*selection;
-      GtkTreeModel	*store;
-      GtkTreeModel	*newstore;
-      GtkTreeIter	iter;
-      gchar		err[100];
 
-      gtk_widget_set_state(GTK_WIDGET(w->rsitem), GTK_STATE_INSENSITIVE);
-
-      state = hview_which_tree_store(column);
-      if (state == HVIEW_TREE_STORE_IS_UNKNOWN)
-	    return;
-
-      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(w->tree_view));
-
-      if (gtk_tree_selection_get_selected(selection, &store, &iter)) {
-	    gtk_tree_model_get (store, &iter, 0, &name, -1);
-      } else {
-	    if (state == HVIEW_TREE_STORE_IS_DOMAINS) {
-		  hview_print(w, "please select domain");
-		  return;	/* domain should be selected */
-	    }
-      }
-
-      if (state == HVIEW_TREE_STORE_IS_DOMAINS) {
-	  gtk_tree_view_column_set_title(column, HVIEW_RESOURCE_COLUMN_TITLE);
-	  gtk_window_set_title(GTK_WINDOW(w->main_window), name);
-	  newstore = voh_list_resources(err);
-	  gtk_tree_view_set_model(GTK_TREE_VIEW(w->tree_view),
-				  GTK_TREE_MODEL(newstore));
-      } else {
-	  gtk_tree_view_column_set_title(column, HVIEW_DOMAIN_COLUMN_TITLE);
-	  gtk_window_set_title(GTK_WINDOW(w->main_window), HVIEW_TITLE);
-	  newstore = voh_list_domains(err);
-	  gtk_tree_view_set_model(GTK_TREE_VIEW(w->tree_view),
-				  GTK_TREE_MODEL(newstore));
-      }
-      gtk_tree_view_set_model(GTK_TREE_VIEW(w->detail_view),
-			      NULL);
-      if (newstore)
-	    g_object_unref(newstore);
-      else
-	    hview_print(w, err);
-      if (name)
-	    g_free(name);
-
-}
-
-void hview_tree_row_activated_call(GtkWidget *widget,
-					  GtkTreeIter *iter,
-					  GtkTreePath *path,
-					  gpointer data)
+void hview_domain_row_activated_call(GtkWidget *widget,
+				     GtkTreeIter *iter,
+				     GtkTreePath *path,
+				     gpointer data)
 {
       HviewWidgetsT		*w = (HviewWidgetsT *) data;
-      GtkTreeViewColumn		*column;
-      int			state;
 
-      column = gtk_tree_view_get_column(GTK_TREE_VIEW(w->tree_view), 0);
 
-      state = hview_which_tree_store(column);
-
-      if (state == HVIEW_TREE_STORE_IS_UNKNOWN)
-	    return;
-      if (state == HVIEW_TREE_STORE_IS_DOMAINS) {
-	    hview_tree_column_activated_call(column, (gpointer) w);
-      } else {
-      }
 }
 
 void hview_tree_row_selected_call(GtkTreeSelection *selection,
@@ -209,8 +180,17 @@ void hview_tree_row_selected_call(GtkTreeSelection *selection,
       GtkTreeModel	*store;
       GtkTreeIter	iter,	parent;
       GtkTreeModel	*details = NULL;
+      GtkWidget		*dview;
+      gint		page;
       gchar		err[100];
 
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return;
+      dview = w->tab_views[page].detail_view;
 
       gtk_widget_set_state(GTK_WIDGET(w->rsitem), GTK_STATE_INSENSITIVE);
 
@@ -225,17 +205,23 @@ void hview_tree_row_selected_call(GtkTreeSelection *selection,
 	      case VOH_ITER_IS_RPT:
 		  details = voh_resource_info(id, err);
 		  break;
-	      case VOH_ITER_IS_RDR:
+	      case VOH_ITER_IS_CONTROL:
+	      case VOH_ITER_IS_SENSOR:
+	      case VOH_ITER_IS_INVENTORY:
+	      case VOH_ITER_IS_WATCHDOG:
+	      case VOH_ITER_IS_ANNUNCIATOR:
 		  if (!gtk_tree_model_iter_parent(store, &parent, &iter))
 			break;
 		  gtk_tree_model_get(store, &parent, VOH_LIST_COLUMN_ID,
 				     &pid, -1);
 		  details = voh_rdr_info(pid, id, err);
 
-		  gtk_widget_set_sensitive(GTK_WIDGET(w->rsitem), TRUE);
+		  if (type == VOH_ITER_IS_SENSOR)
+			gtk_widget_set_sensitive(GTK_WIDGET(w->rsitem), TRUE);
+
 		  break;
 	    }
-	    gtk_tree_view_set_model(GTK_TREE_VIEW(w->detail_view), details);
+	    gtk_tree_view_set_model(GTK_TREE_VIEW(dview), details);
 	    if (details)
 		  g_object_unref(details);
       }
@@ -245,35 +231,34 @@ gint hview_readsensor_thread(gpointer data)
 {
       HviewWidgetsT	*w = (HviewWidgetsT *) data;
       GtkTreeModel	*store;
-      GtkTreeViewColumn	*column;
       GtkTreeSelection	*selection;
-      GtkTreeIter	iter,	parent,	child;
-      guint		id,	pid;
-      gchar		err[100],	*val = NULL;
+      GtkTreeIter	iter;
+      guint		id;
+      gint		ret;
+      GtkWidget		*tview;
+      gint		page;
+      gchar		err[100];
 
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return FALSE;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return FALSE;
+      tview = w->tab_views[page].tree_view;
 
-      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(w->tree_view));
+      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
 
       gtk_tree_selection_get_selected(selection, &store, &iter);
       gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_ID, &id, -1);
 
-      gtk_tree_model_iter_parent(store, &parent, &iter);
-      gtk_tree_model_get(store, &parent, VOH_LIST_COLUMN_ID, &pid, -1);
-
-      val = voh_read_sensor(pid, id, err);
-      if (val == NULL) {
+      ret = voh_read_sensor(GTK_TREE_STORE(store), id, err);
+      if (ret == -1) {
 	    hview_print(w, err);
 	    hview_statusbar_push(w, "sensor reading failed");
       } else {
-	    gtk_tree_store_append(GTK_TREE_STORE(store), &child, &iter);
-	    gtk_tree_store_set(GTK_TREE_STORE(store), &child,
-			       VOH_LIST_COLUMN_NAME, val,
-			       VOH_LIST_COLUMN_TYPE,
-			       VOH_ITER_IS_PATH,
-			       -1);
 
 	    hview_statusbar_push(w, "ready");
-	    g_free(val);
       }
 
       gtk_widget_set_sensitive(w->main_window, TRUE);
@@ -287,31 +272,122 @@ void hview_read_sensor_call(GtkWidget *widget, gpointer data)
       guint		type;
       GtkTreeModel	*store;
       GtkTreeIter	iter;
-      GtkTreeViewColumn		*column;
       GtkTreeSelection	*selection;
+      GtkWidget		*tview;
+      gint		page;
       int		state;
 
-      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(w->tree_view));
-      column = gtk_tree_view_get_column(GTK_TREE_VIEW(w->tree_view), 0);
-      state = hview_which_tree_store(column);
-
-      switch (state) {
-	case HVIEW_TREE_STORE_IS_UNKNOWN:
-	case HVIEW_TREE_STORE_IS_DOMAINS:
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
 	    return;
-	case HVIEW_TREE_STORE_IS_RESOURCES:
-	    if (gtk_tree_selection_get_selected(selection, &store, &iter)) {
-		  gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_TYPE,
-				     &type, -1);
-		  if (type == VOH_ITER_IS_RDR) {
-			hview_statusbar_push(w, "sensor reading (please wait)");
-			    gtk_widget_set_sensitive(w->main_window, FALSE);
-			    gtk_timeout_add(100, hview_readsensor_thread, data);
-		  }
-	    } else {
-		  hview_print(w, "select sensor please");
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return;
+      tview = w->tab_views[page].tree_view;
+
+      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+      if (gtk_tree_selection_get_selected(selection, &store, &iter)) {
+	    gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_TYPE, &type, -1);
+	    if (type == VOH_ITER_IS_SENSOR) {
+		  hview_statusbar_push(w, "sensor reading (please wait)");
+		  gtk_widget_set_sensitive(w->main_window, FALSE);
+		  gtk_timeout_add(100, hview_readsensor_thread, data);
 	    }
-	    break;
+      } else {
+	    hview_print(w, "select sensor please");
       }
 
 }
+
+void hview_show_hide_domain_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT	*w = (HviewWidgetsT *) data;
+      GtkTooltips	*tooltips;
+      GtkWidget		*image;
+
+      tooltips = gtk_tooltips_new();
+
+      image = gtk_tool_button_get_icon_widget(GTK_TOOL_BUTTON(widget));
+
+      if (strcmp(gtk_tool_button_get_label(GTK_TOOL_BUTTON(widget)),
+		 "hide domain list") == 0) {
+	    gtk_tool_button_set_label(GTK_TOOL_BUTTON(widget),
+				      "show domain list");
+	    gtk_widget_hide(w->domain_window);
+
+	    gtk_tool_item_set_tooltip(GTK_TOOL_ITEM(widget), tooltips,
+				      "Show domain list", NULL);
+	    gtk_image_set_from_file(GTK_IMAGE(image),
+				    find_pixmap_file("show.png"));
+      } else {
+	    gtk_tool_button_set_label(GTK_TOOL_BUTTON(widget),
+				      "hide domain list");
+	    gtk_widget_show(w->domain_window);
+
+	    gtk_tool_item_set_tooltip(GTK_TOOL_ITEM(widget), tooltips,
+				      "Hide domain list", NULL);
+	    gtk_image_set_from_file(GTK_IMAGE(image),
+				    find_pixmap_file("hide.png"));
+      }
+}
+
+void hview_switch_page_call(GtkNotebook *notebook,
+			    GtkNotebookPage *page,
+			    guint pagenum,
+			    gpointer data)
+{
+      HviewWidgetsT	*w = (HviewWidgetsT *) data;
+
+      gtk_widget_set_state(GTK_WIDGET(w->rsitem), GTK_STATE_INSENSITIVE);
+}
+
+void hview_open_session_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT		*w = (HviewWidgetsT *) data;
+      GtkWidget			*hpaned;
+      GtkWidget			*label;
+      GtkWidget			*detail_window;
+      GtkWidget			*tree_window;
+      GtkTreeModel		*store = NULL;
+      GtkTreeSelection		*selection;
+      GtkTreeIter		iter;
+      gchar			*name;
+      gint			page;
+      guint			did;
+
+      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(w->domain_view));
+
+      if (gtk_tree_selection_get_selected(selection, &store, &iter)) {
+	    hpaned = gtk_hpaned_new();
+
+	    if (store) {
+		  gtk_tree_model_get(store, &iter,
+				     VOH_LIST_COLUMN_NAME, &name,
+				     VOH_LIST_COLUMN_ID, &did, -1);
+		  g_object_unref(store);
+	    } else {
+		  return;
+	    }
+
+	    label = gtk_label_new(name);
+	    g_free(name);
+
+	    page = gtk_notebook_append_page(GTK_NOTEBOOK(w->tab_windows),
+					    hpaned, label);
+
+	    if (page < 0 || page >= HVIEW_MAX_TAB_WINDOWS)
+		  return;
+
+	    tree_window = hview_get_tree_window(w, page);
+	    gtk_paned_add1(GTK_PANED(hpaned), tree_window);
+	    
+	    detail_window = hview_get_detail_window(w, page);
+	    gtk_paned_add2(GTK_PANED(hpaned), detail_window);
+	    
+	    gtk_widget_show_all(hpaned);
+      } else {
+	    hview_print(w, "select domain please");
+      }
+}
+
