@@ -357,7 +357,7 @@ const char *vohSeverity2String(SaHpiSeverityT severity)
 		{SAHPI_MAJOR,			"major"},
 		{SAHPI_MINOR,			"minor"},
 		{SAHPI_INFORMATIONAL,		"informational"},
-		{SAHPI_OK,			"ok"},
+		{SAHPI_OK,			"normal"},
 		{SAHPI_DEBUG,			"debug"},
 		{SAHPI_ALL_SEVERITIES,		"all severities"},
 		{0, 0}

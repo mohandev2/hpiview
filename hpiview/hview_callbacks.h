@@ -25,16 +25,16 @@ void hview_unload_plugin_call(GtkWidget *widget, gpointer data);
 void hview_session_close_call(GtkWidget *widget, gpointer data);
 gint hview_discover_thread(gpointer data);
 void hview_discover_call(GtkWidget *widget, gpointer data);
-void hview_about_call(void);
+void hview_about_call(GtkWidget *widget, gpointer data);
 void hview_tree_column_activated_call(GtkTreeViewColumn *column,
 					     gpointer data);
 void hview_tree_row_activated_call(GtkWidget *widget,
 					  GtkTreeIter *iter,
 					  GtkTreePath *path,
 					  gpointer data);
-gboolean hview_button_prees_treeview_call(GtkWidget *widget,
-				      GdkEventButton *event,
-				      gpointer data);
+gboolean hview_butpress_rlist_call(GtkWidget *widget,
+				   GdkEventButton *event,
+				   gpointer data);
 void hview_domain_row_activated_call(GtkWidget *widget,
 				     GtkTreeIter *iter,
 				     GtkTreePath *path,
@@ -56,12 +56,14 @@ void hview_switch_page_call(GtkNotebook *notebook,
 void hview_set_power_off_call(GtkWidget *widget, gpointer data);
 void hview_set_power_on_call(GtkWidget *widget, gpointer data);
 void hview_set_power_cycle_call(GtkWidget *widget, gpointer data);
-void hview_set_reset_cold_call(GtkWidget *widget, gpointer data);
-void hview_set_reset_warm_call(GtkWidget *widget, gpointer data);
+void hview_reset_cold_call(GtkWidget *widget, gpointer data);
+void hview_reset_warm_call(GtkWidget *widget, gpointer data);
 void hview_reset_assert_call(GtkWidget *widget, gpointer data);
 void hview_reset_deassert_call(GtkWidget *widget, gpointer data);
-void hvew_toggled_call(GtkToggleToolButton *but, gpointer data);
+void hview_toggled_call(GtkToggleToolButton *but, gpointer data);
 void hview_disactivate_toggle_call(GtkWidget *widget, gpointer data);
 
+void hview_rpt_settings_ok_response(gpointer data);
+void hview_rpt_settings_call(GtkWidget *widget, gpointer data);
 #endif
 
