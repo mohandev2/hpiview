@@ -317,6 +317,14 @@ GtkWidget *hwidget_get_resource_popup(GtkTreeModel *store,
 		sitem = hwidget_get_menu_item("viewmag.png", "Read sensor",
 					      hview_read_sensor_call, data);
 		gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		sitem = gtk_separator_menu_item_new();
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		sitem = hwidget_get_menu_item_from_stock(GTK_STOCK_PREFERENCES,
+						hview_sensor_settings_call,
+						data);
+		gtk_container_add(GTK_CONTAINER(menu), sitem); 
 		return menu;
 	case VOH_ITER_IS_CONTROL:
 	case VOH_ITER_IS_INVENTORY:

@@ -65,5 +65,8 @@ void hview_disactivate_toggle_call(GtkWidget *widget, gpointer data);
 
 void hview_rpt_settings_ok_response(gpointer data);
 void hview_rpt_settings_call(GtkWidget *widget, gpointer data);
+void hview_sensor_settings_ok_response(gpointer data);
+void hview_sensor_settings_call(GtkWidget *widget, gpointer data);
+
 #endif
 

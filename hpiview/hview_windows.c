@@ -523,3 +523,92 @@ GtkWidget *hview_get_rpt_empty_dialog_window(HviewWidgetsT *w)
 	return dialog;
 }
 
+GtkWidget *hview_get_sensor_settings_window(HviewSenDialogWidgetsT *w)
+{
+	HviewWidgetsT	*pw = w->parent_widgets;
+	GtkWidget	*dialog;
+	GtkWidget	*notebook;
+	GtkWidget	*vbox,		*vbox1,	*hbox;
+	GtkWidget	*frame;
+	GtkWidget	*entry;
+	GtkCellRenderer	*renderer;
+	GtkWidget	*label;
+	GtkWidget	*but;
+
+	dialog = gtk_dialog_new_with_buttons("Sensor preferences",
+					     GTK_WINDOW(pw->main_window),
+					     GTK_DIALOG_MODAL |
+					        GTK_DIALOG_DESTROY_WITH_PARENT,
+					     GTK_STOCK_OK,
+					     GTK_RESPONSE_OK,
+					     GTK_STOCK_CANCEL,
+					     GTK_RESPONSE_CANCEL,
+					     NULL);
+
+	gtk_widget_set_size_request(GTK_WIDGET(dialog),
+				    HVIEW_SETTINGS_WINDOW_WIDTH,
+				    HVIEW_SETTINGS_WINDOW_HEIGHT);
+
+	notebook = gtk_notebook_new();
+//	g_signal_connect(G_OBJECT(notebook), "switch-page",
+//			 NULL, (gpointer)w);
+	gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
+	gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
+//	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
+//			   notebook, TRUE, FALSE, 5);
+	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), notebook);
+
+	vbox = gtk_vbox_new(FALSE, 5);
+	label = gtk_label_new("General");
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, label);
+	
+	frame = gtk_frame_new("Sensor info");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, FALSE, FALSE, 5);	
+
+	w->info_box = gtk_vbox_new(FALSE, 5);
+	gtk_container_add(GTK_CONTAINER(frame), w->info_box);
+
+	w->enable_status = gtk_check_button_new_with_label(
+						"Sensor enable status");
+	gtk_box_pack_start(GTK_BOX(vbox), w->enable_status, TRUE, FALSE, 5);
+
+
+	vbox = gtk_vbox_new(FALSE, 5);
+	label = gtk_label_new("Event");
+	gtk_notebook_append_page(GTK_NOTEBOOK(notebook), vbox, label);
+
+	frame = gtk_frame_new("Sensor event info");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, FALSE, FALSE, 5);
+
+	w->event_info_box = gtk_vbox_new(FALSE, 5);
+	gtk_container_add(GTK_CONTAINER(frame), w->event_info_box);
+
+	frame = gtk_frame_new("Sensor event masks");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 5);
+	vbox1 = gtk_vbox_new(FALSE, 5);
+	gtk_container_add(GTK_CONTAINER(frame), vbox1);
+
+	hbox = gtk_hbox_new(FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox1), hbox, TRUE, TRUE, 5);
+
+	label = gtk_label_new("Assert event mask   ");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 10);
+	but = gtk_button_new_with_label(" Set ");
+	gtk_box_pack_start(GTK_BOX(hbox), but, TRUE, FALSE, 10);
+
+	hbox = gtk_hbox_new(FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox1), hbox, TRUE, TRUE, 5);
+
+	label = gtk_label_new("Deassert event mask");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 10);
+	but = gtk_button_new_with_label(" Set ");
+	gtk_box_pack_start(GTK_BOX(hbox), but, TRUE, FALSE, 10);
+	
+	w->event_enable_status = gtk_check_button_new_with_label(
+						"Sensor event enable status");
+	gtk_box_pack_start(GTK_BOX(vbox), w->event_enable_status,
+			   TRUE, FALSE, 5);
+
+	return dialog;
+}
+

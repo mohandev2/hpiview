@@ -21,12 +21,6 @@
 
 #define HVIEW_MAX_TAB_WINDOWS		100
 
-/*
-typedef struct HviewEventThrData {
-      GtkWidget		*event_view;
-      guint		sessionid;
-} HviewEventThrDataT;
-*/
 
 typedef struct HviewTabs {
       GtkWidget		*resource_view;
@@ -68,6 +62,15 @@ typedef struct HviewRptDialogWidgets {
 	GtkWidget	*severity_box;
 	GtkWidget	*tag_entry;
 } HviewRptDialogWidgetsT;
+
+typedef struct HviewSenDialogWidgets {
+	HviewWidgetsT	*parent_widgets;
+	GtkWidget	*dialog_window;
+	GtkWidget	*info_box;
+	GtkWidget	*enable_status;
+	GtkWidget	*event_info_box;
+	GtkWidget	*event_enable_status;
+} HviewSenDialogWidgetsT;
 
 void hview_print(HviewWidgetsT *w, const gchar *string);
 void hview_event_print(HviewWidgetsT *w, const gchar *string);

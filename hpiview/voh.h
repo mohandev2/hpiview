@@ -96,6 +96,10 @@ gchar *voh_get_resource_severity(guint sessionid, guint resourceid, gchar *err);
 gboolean voh_check_resource_presence(guint sessionid,
 				     guint resourceid,
 				     gchar *err);
+gboolean voh_check_rdr_presence(guint sessionid,
+				guint resourceid,
+				guint rdrentryid,
+				gchar *err);
 GtkListStore *voh_get_severity_list(void);
 
 GList *voh_get_resource_info(guint sessionid,
@@ -108,6 +112,27 @@ gboolean voh_set_resource_tag(guint sessionid,
 			      guint resourceid,
 			      const gchar *resource_tag,
 			      gchar *err);
+GList *voh_get_sensor_info(guint sessionid,
+			   guint resourceid,
+			   guint rdrentryid,
+			   gchar *err);
+
+gboolean voh_get_sensor_enable(guint sessionid,
+			       guint resourceid,
+			       guint rdrentryid,
+			       gboolean *status,
+			       gchar *err);
+
+gboolean voh_set_sensor_enable(guint sessionid,
+			       guint resourceid,
+			       guint rdrentryid,
+			       gboolean status,
+			       gchar *err);
+
+GList *voh_get_sensor_event_info(guint sessionid,
+				 guint resourceid,
+				 guint rdrentryid,
+				 gchar *err);
 
 #endif /* __VOH_H__ */
 
