@@ -73,6 +73,41 @@ GtkWidget *create_pixmap(const gchar *filename)
 }
 
 
+GtkWidget *hview_get_toggle_bar(HviewWidgetsT *w)
+{
+      GtkWidget		*bar;
+      GtkToolItem	*but;
+      GtkWidget		*separator;
+      GtkWidget		*icon;
+      GtkWidget		*label;
+
+      bar = gtk_toolbar_new();
+      gtk_toolbar_set_style(GTK_TOOLBAR(bar), GTK_TOOLBAR_BOTH_HORIZ);
+      but = gtk_toggle_tool_button_new();
+      icon = create_pixmap("message_log.png");
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(but), icon);
+      gtk_tool_button_set_label(GTK_TOOL_BUTTON(but), "Messages");
+      gtk_tool_item_set_is_important(GTK_TOOL_ITEM(but), TRUE);
+      gtk_toolbar_insert(GTK_TOOLBAR(bar), but, -1);
+      g_signal_connect(G_OBJECT(but), "toggled",
+			 G_CALLBACK(hvew_toggled_call),
+			 (gpointer)w);
+
+      but = gtk_toggle_tool_button_new();
+      icon = create_pixmap("event_log.png");
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(but), icon);
+      gtk_tool_button_set_label(GTK_TOOL_BUTTON(but), "Events");
+      gtk_tool_item_set_is_important(GTK_TOOL_ITEM(but), TRUE);
+      gtk_toolbar_insert(GTK_TOOLBAR(bar), but, -1);
+      g_signal_connect(G_OBJECT(but), "toggled",
+			 G_CALLBACK(hvew_toggled_call),
+			 (gpointer)w);
+//      gtk_tool_button_set_label_widget(GTK_TOOL_BUTTON(but), label);
+
+
+      return bar;
+}
+
 	/* Create menu bar */
 
 GtkWidget *hview_get_menubar(HviewWidgetsT *w)
@@ -171,17 +206,26 @@ GtkWidget *hview_get_toolbar(HviewWidgetsT *w)
       tooltips = gtk_tooltips_new();
       gtk_tool_item_set_tooltip(titem, tooltips, "Discover", NULL);
 
-      iconw = create_pixmap("viewmag.png");
-      w->rsitem = gtk_tool_button_new(iconw, "Read sensor");
-      g_signal_connect(G_OBJECT(w->rsitem), "clicked",
-		       G_CALLBACK(hview_read_sensor_call),
+      iconw = create_pixmap("sub_events.png");
+      w->subev_item = gtk_tool_button_new(iconw, "Subscribe events");
+      g_signal_connect(G_OBJECT(w->subev_item), "clicked",
+		       G_CALLBACK(hview_subscribe_events_call),
 		       (gpointer) w);
-      gtk_toolbar_insert(GTK_TOOLBAR(tbar), w->rsitem, -1);
+      gtk_toolbar_insert(GTK_TOOLBAR(tbar), w->subev_item, -1);
 
       tooltips = gtk_tooltips_new();
-      gtk_tool_item_set_tooltip(w->rsitem, tooltips, "Read Sensor", NULL);
-      gtk_widget_set_state(GTK_WIDGET(w->rsitem), GTK_STATE_INSENSITIVE);
+      gtk_tool_item_set_tooltip(w->subev_item, tooltips,
+				"Subscribe events", NULL);
 
+      iconw = create_pixmap("get_events.png");
+      titem = gtk_tool_button_new(iconw, "get events");
+      g_signal_connect(G_OBJECT(titem), "clicked",
+		       G_CALLBACK(hview_get_events_call),
+		       (gpointer) w);
+      gtk_toolbar_insert(GTK_TOOLBAR(tbar), titem, -1);
+
+      tooltips = gtk_tooltips_new();
+      gtk_tool_item_set_tooltip(titem, tooltips, "Get events", NULL);
       return tbar;
 }
 
@@ -338,12 +382,13 @@ GtkWidget *hview_get_tree_window(HviewWidgetsT *w, gint page)
 						  VOH_LIST_COLUMN_ICON, NULL);
       col = gtk_tree_view_get_column(GTK_TREE_VIEW(view),
 				     VOH_LIST_COLUMN_ICON);
-      gtk_tree_view_column_set_cell_data_func(col, renderer,
-					      hview_tree_pixbuf_cell_func,
-					      NULL, NULL);
+//      gtk_tree_view_column_set_cell_data_func(col, renderer,
+//					      hview_tree_pixbuf_cell_func,
+//					      NULL, NULL);
 
-      gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(view),
-					FALSE);
+      gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(view), FALSE);
+
+//      gtk_tree_view_set_headers_clickable(GTK_TREE_VIEW(view), TRUE);
 
       selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
 
@@ -408,9 +453,10 @@ GtkWidget *hview_get_detail_window(HviewWidgetsT *w, gint page)
 
 	/* Create "log window" */
 
-GtkWidget *hview_get_log_window(HviewWidgetsT *w)
+GtkWidget *hview_get_message_window(HviewWidgetsT *w)
 {
       GtkWidget		*window;
+      GtkWidget		*log_view;
       GtkTextBuffer	*buf;
 
       window = gtk_scrolled_window_new(NULL, NULL);
@@ -421,15 +467,17 @@ GtkWidget *hview_get_log_window(HviewWidgetsT *w)
       gtk_widget_set_size_request(GTK_WIDGET(window),
 				  HVIEW_LOG_WINDOW_WIDTH,
 				  HVIEW_LOG_WINDOW_HEIGHT);
-
-      w->log_view = gtk_text_view_new();
+      log_view = gtk_text_view_new();
 
       buf = gtk_text_buffer_new(NULL);
-      gtk_text_view_set_buffer(GTK_TEXT_VIEW(w->log_view), buf);
-      gtk_text_view_set_editable(GTK_TEXT_VIEW(w->log_view), FALSE);
-      gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(w->log_view), FALSE);
+      gtk_text_view_set_buffer(GTK_TEXT_VIEW(log_view), buf);
+      gtk_text_view_set_editable(GTK_TEXT_VIEW(log_view), FALSE);
+      gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(log_view), FALSE);
       gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(window),
-					    w->log_view);
+					    log_view);
+
+
+      w->message_view = log_view;
 
       hview_print(w, HVIEW_NAME_VERSION);
 
@@ -440,8 +488,10 @@ GtkWidget *hview_get_log_window(HviewWidgetsT *w)
 
 GtkWidget *hview_get_event_window(HviewWidgetsT *w)
 {
-      GtkWidget		*window;
-      GtkTextBuffer	*buf;
+      GtkWidget			*window;
+      GtkCellRenderer		*renderer;
+      GtkTreeViewColumn		*col;
+      GtkTreeStore		*model;
 
       window = gtk_scrolled_window_new(NULL, NULL);
       gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(window),
@@ -452,17 +502,100 @@ GtkWidget *hview_get_event_window(HviewWidgetsT *w)
 				  HVIEW_LOG_WINDOW_WIDTH,
 				  HVIEW_LOG_WINDOW_HEIGHT);
 
-      w->event_view = gtk_text_view_new();
+      model = gtk_tree_store_new(VOH_EVENT_LIST_NUM_COL, G_TYPE_STRING,
+				 G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
+				 G_TYPE_STRING, G_TYPE_STRING);
+      w->event_view = gtk_tree_view_new_with_model(GTK_TREE_MODEL(model));
+      g_object_unref(model);
 
-      buf = gtk_text_buffer_new(NULL);
-      gtk_text_view_set_buffer(GTK_TEXT_VIEW(w->event_view), buf);
-      gtk_text_view_set_editable(GTK_TEXT_VIEW(w->event_view), FALSE);
-      gtk_text_view_set_cursor_visible(GTK_TEXT_VIEW(w->event_view), FALSE);
+      renderer = gtk_cell_renderer_text_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->event_view),
+						  VOH_EVENT_LIST_COLUMN_TIME,
+						  HVIEW_EVENT_TIME_TITLE,
+						  renderer,
+						  "text",
+						  VOH_EVENT_LIST_COLUMN_TIME,
+						  NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->event_view),
+				     VOH_EVENT_LIST_COLUMN_TIME);
+//      gtk_tree_view_column_set_cell_data_func(col, renderer,
+//					      hview_event_cell_func,
+//					      NULL, NULL);
+
+      renderer = gtk_cell_renderer_text_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->event_view),
+						  VOH_EVENT_LIST_COLUMN_NAME,
+						  HVIEW_EVENT_LIST_TITLE,
+						  renderer,
+						  "text",
+						  VOH_EVENT_LIST_COLUMN_NAME,
+						  NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->event_view),
+				     VOH_EVENT_LIST_COLUMN_NAME);
+//      gtk_tree_view_column_set_cell_data_func(col, renderer,
+//					      hview_event_cell_func,
+//					      NULL, NULL);
+
+      renderer = gtk_cell_renderer_text_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->event_view),
+						  VOH_EVENT_LIST_COLUMN_SOURCE,
+						  HVIEW_EVENT_SOURCE_TITLE,
+						  renderer,
+						  "text",
+						  VOH_EVENT_LIST_COLUMN_SOURCE,
+						  NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->event_view),
+				     VOH_EVENT_LIST_COLUMN_SOURCE);
+//      gtk_tree_view_column_set_cell_data_func(col, renderer,
+//					      hview_event_cell_func,
+//					      NULL, NULL);
+
+      renderer = gtk_cell_renderer_text_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->event_view),
+						  VOH_EVENT_LIST_COLUMN_SEVER,
+						  HVIEW_EVENT_SEVERITY_TITLE,
+						  renderer,
+						  "text",
+						  VOH_EVENT_LIST_COLUMN_SEVER,
+						  NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->event_view),
+				     VOH_EVENT_LIST_COLUMN_SEVER);
+//      gtk_tree_view_column_set_cell_data_func(col, renderer,
+//					      hview_event_cell_func,
+//					      NULL, NULL);
+
+      renderer = gtk_cell_renderer_text_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->event_view),
+						  VOH_EVENT_LIST_COLUMN_TYPE,
+						  HVIEW_EVENT_TYPE_TITLE,
+						  renderer,
+						  "text",
+						  VOH_EVENT_LIST_COLUMN_TYPE,
+						  NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->event_view),
+				     VOH_EVENT_LIST_COLUMN_TYPE);
+//      gtk_tree_view_column_set_cell_data_func(col, renderer,
+//					      hview_event_cell_func,
+//					      NULL, NULL);
+
+      renderer = gtk_cell_renderer_text_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->event_view),
+						  VOH_EVENT_LIST_COLUMN_DOMAIN,
+						  HVIEW_EVENT_DOMAIN_TITLE,
+						  renderer,
+						  "text",
+						  VOH_EVENT_LIST_COLUMN_DOMAIN,
+						  NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->event_view),
+				     VOH_EVENT_LIST_COLUMN_DOMAIN);
+//      gtk_tree_view_column_set_cell_data_func(col, renderer,
+//					      hview_event_cell_func,
+//					      NULL, NULL);
+
+
+
       gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(window),
 					    w->event_view);
-
-      hview_event_print(w, "no events (not supported yet)");
-
       return window;
 }
 
@@ -601,11 +734,11 @@ void hview_print(HviewWidgetsT *w, const gchar *string)
       GtkTextIter	iter;
 
       buf = GTK_TEXT_BUFFER(gtk_text_view_get_buffer
-			    		(GTK_TEXT_VIEW(w->log_view)));
+			    		(GTK_TEXT_VIEW(w->message_view)));
       gtk_text_buffer_get_end_iter(buf, &iter);
       gtk_text_buffer_insert(buf, &iter, string, -1);
       gtk_text_buffer_insert(buf, &iter, "\n", -1);
-      gtk_text_view_set_buffer(GTK_TEXT_VIEW(w->log_view), buf);
+      gtk_text_view_set_buffer(GTK_TEXT_VIEW(w->message_view), buf);
 }
 
 void hview_event_print(HviewWidgetsT *w, const gchar *string)

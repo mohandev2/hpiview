@@ -33,8 +33,7 @@ static void hview_init(void)
       GtkWidget		*hpaned,	*hpaned1;
       GtkWidget		*main_vbox,	*hbox;
       GtkTreeModel	*domains;
-      GtkWidget		*notebook,	*notebook1;
-      GtkWidget		*label;
+      GtkWidget		*notebook;
       GtkWidget		*separator;
       gint		i;
 
@@ -101,26 +100,26 @@ static void hview_init(void)
 //-----------------------------------------------------------------------------
 
       gtk_paned_add2(GTK_PANED(hpaned1), widgets.tab_windows);
-//      gtk_notebook_append_page(GTK_NOTEBOOK(widgets.tab_windows), frame,
-//			       label);
 
 // Create tab windows ("log window", "event window") and add it with
 // hpaned window to vertical paned window -------------------------------------
-      notebook1 = gtk_notebook_new();
-      gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook1), GTK_POS_BOTTOM);
       gtk_paned_add1(GTK_PANED(vpaned), hbox);
-      gtk_paned_add2(GTK_PANED(vpaned), notebook1);
-      widgets.log_window = hview_get_log_window(&widgets);
-      label = gtk_label_new("messages");
-      gtk_notebook_append_page(GTK_NOTEBOOK(notebook1), widgets.log_window,
-			       label);
+      widgets.message_window = hview_get_message_window(&widgets);
       widgets.event_window = hview_get_event_window(&widgets);
-      label = gtk_label_new("events");
-      gtk_notebook_append_page(GTK_NOTEBOOK(notebook1), widgets.event_window,
-			       label);
+      widgets.tglbar = hview_get_toggle_bar(&widgets);
+      widgets.log_hbox = gtk_hbox_new(FALSE, -1);
+      gtk_box_pack_start(GTK_BOX(widgets.log_hbox), widgets.message_window,
+			 TRUE, TRUE, 0);
+      gtk_box_pack_start(GTK_BOX(widgets.log_hbox), widgets.event_window,
+			 TRUE, TRUE, 0);
+
+      gtk_paned_add2(GTK_PANED(vpaned), widgets.log_hbox);
 //-----------------------------------------------------------------------------
 
       gtk_box_pack_start(GTK_BOX(main_vbox), vpaned, TRUE, TRUE, 0);
+      separator = gtk_hseparator_new();
+      gtk_box_pack_start(GTK_BOX(main_vbox), separator, FALSE, FALSE, 0);
+      gtk_box_pack_start(GTK_BOX(main_vbox), widgets.tglbar, FALSE, FALSE, 0);
 
 // Create statusbar -----------------------------------------------------------
       widgets.statusbar = gtk_statusbar_new();
@@ -130,6 +129,9 @@ static void hview_init(void)
 //-----------------------------------------------------------------------------
 
       gtk_widget_show_all(widgets.main_window);
+      gtk_widget_hide(widgets.message_window);
+      gtk_widget_hide(widgets.event_window);
+      gtk_widget_hide(widgets.log_hbox);
 
 }
 

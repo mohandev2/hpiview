@@ -46,6 +46,9 @@ gint hview_readsensor_thread(gpointer data);
 void hview_read_sensor_call(GtkWidget *widget, gpointer data);
 void hview_show_hide_domain_call(GtkWidget *widget, gpointer data);
 void hview_open_session_call(GtkWidget *widget, gpointer data);
+gboolean hview_check_events_thread(gpointer data);
+void hview_subscribe_events_call(GtkWidget *widget, gpointer data);
+void hview_get_events_call(GtkWidget *widget, gpointer data);
 void hview_switch_page_call(GtkNotebook *notebook,
 			    GtkNotebookPage *page,
 			    guint pagenum,
@@ -57,6 +60,8 @@ void hview_set_reset_cold_call(GtkWidget *widget, gpointer data);
 void hview_set_reset_warm_call(GtkWidget *widget, gpointer data);
 void hview_reset_assert_call(GtkWidget *widget, gpointer data);
 void hview_reset_deassert_call(GtkWidget *widget, gpointer data);
+void hvew_toggled_call(GtkToggleToolButton *but, gpointer data);
+void hview_disactivate_toggle_call(GtkWidget *widget, gpointer data);
 
 #endif
 

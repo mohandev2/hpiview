@@ -1,3 +1,5 @@
+#include <time.h>
+#include <sys/time.h>
 #include "voh_string.h"
 
 
@@ -75,6 +77,34 @@ const char *vohBoolean2String(gboolean b)
 	    return "no";
 }
 
+const char *vohTime2String(SaHpiTimeT time)
+{
+      static char	tstr[1024];
+      int count;
+      struct tm t;
+      time_t tt;
+
+      if (time > SAHPI_TIME_MAX_RELATIVE) { /*absolute time*/
+	    tt = time / 1000000000;
+	    count = strftime(tstr, 1024, "%F %T", localtime(&tt));
+      } else if (time ==  SAHPI_TIME_UNSPECIFIED) {
+	    sprintf(tstr, "unknown");
+	    count = sizeof("unknown");
+      } else if (time > SAHPI_TIME_UNSPECIFIED) { /*invalid time*/
+	    sprintf(tstr,"invalid time");
+	    count = sizeof("Invalid time");
+      } else {   /*relative time*/
+	    tt = time / 1000000000;
+	    localtime_r(&tt, &t);
+	    /* count = strftime(str, size, "%b %d, %Y - %H:%M:%S", &t); */
+	    count = strftime(tstr, 1024, "%c", &t);
+      }
+
+      if (count == 0)
+	    return "invalid time";
+
+	return tstr;
+}
 
 const char *vohError2String(SaErrorT err)
 {
@@ -318,6 +348,23 @@ const char *vohHsCapabilities2String(SaHpiHsCapabilitiesT cf)
       };
 
       return hpiBitMask2String(cap_map, cf);
+}
+
+const char *vohSeverity2String(SaHpiSeverityT severity)
+{
+      static cMap severity_map[] = {
+		{SAHPI_CRITICAL,		"critical"},
+		{SAHPI_MAJOR,			"major"},
+		{SAHPI_MINOR,			"minor"},
+		{SAHPI_INFORMATIONAL,		"informational"},
+		{SAHPI_OK,			"ok"},
+		{SAHPI_DEBUG,			"debug"},
+		{SAHPI_ALL_SEVERITIES,		"all severities"},
+		{0, 0}
+      };
+
+      return ValueToString(severity_map, severity, "%d");
+
 }
 
 const char *vohEventCategory2String(SaHpiEventCategoryT category)
@@ -806,5 +853,62 @@ vohPowerState2String(SaHpiResetActionT state)
       };
 
       return ValueToString(ps_map, state, "%d");
+}
+
+const char *
+vohEventType2String(SaHpiEventTypeT evtype)
+{
+      static cMap evtype_map[] = {
+		{SAHPI_ET_RESOURCE,		"Resource type"},
+		{SAHPI_ET_DOMAIN,		"Domain type"},
+		{SAHPI_ET_SENSOR,		"Sensor type"},
+		{SAHPI_ET_SENSOR_ENABLE_CHANGE,	"Sensor enable change type"},
+		{SAHPI_ET_HOTSWAP,		"Hotswap type"},
+		{SAHPI_ET_WATCHDOG,		"Watchdog type"},
+		{SAHPI_ET_HPI_SW,		"HPI SW type"},
+		{SAHPI_ET_OEM,			"OEM type"},
+		{SAHPI_ET_USER,			"User type"},
+		{0, 0}
+      };
+
+      return ValueToString(evtype_map, evtype, "%d");
+}
+
+const char *
+vohResourceEventType2String(SaHpiResourceEventTypeT evtype)
+{
+      static cMap evtype_map[] = {
+		{SAHPI_RESE_RESOURCE_FAILURE,		"failure"},
+		{SAHPI_RESE_RESOURCE_RESTORED,		"restored"},
+		{SAHPI_RESE_RESOURCE_ADDED,		"added"},
+		{0, 0}
+      };
+
+      return ValueToString(evtype_map, evtype, "%d");
+}
+
+const char *
+vohDomainEventType2String(SaHpiDomainEventTypeT evtype)
+{
+      static cMap evtype_map[] = {
+		{SAHPI_DOMAIN_REF_ADDED,		"added"},
+		{SAHPI_DOMAIN_REF_REMOVED,		"removed"},
+		{0, 0}
+      };
+
+      return ValueToString(evtype_map, evtype, "%d");
+}
+
+const char *
+vohSwEventType2String(SaHpiSwEventTypeT evtype)
+{
+      static cMap evtype_map[] = {
+		{SAHPI_HPIE_AUDIT,			"audit"},
+		{SAHPI_HPIE_STARTUP,			"sturtup"},
+		{SAHPI_HPIE_OTHER,			"other"},
+		{0, 0}
+      };
+
+      return ValueToString(evtype_map, evtype, "%d");
 }
 
