@@ -10,6 +10,8 @@ bin_PROGRAMS = hpiview
 
 hpiview_SOURCES = \
 	hpiview.c hpiview.h \
+	hview_service.c hview_service.h \
+	hview_callbacks.c hview_callbacks.h \
 	voh.c voh.h \
 	voh_string.c voh_string.h
 

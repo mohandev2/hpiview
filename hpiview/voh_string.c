@@ -1,5 +1,5 @@
 #include "voh_string.h"
-#include <string.h>
+#include <glib.h>
 
 
 typedef struct cMapS
@@ -61,6 +61,9 @@ static const char *hpiBitMask2String( cMap *map, unsigned int value )
 
        strcat( str, s );
      }
+
+  if (strlen(str) < 1)
+	strcat(str, "none");
 
   return str;
 }
@@ -178,11 +181,32 @@ vohEntityType2String(SaHpiEntityTypeT type)
       return ValueToString(ent_map, type, "%d");
 }
 
-void vohEntityPath2String(SaHpiEntityT *entity, char *path)
+void vohEntityPath2String(SaHpiEntityT *entity, char *str)
 {
 
-      sprintf(path, "%s #%d", vohEntityType2String(entity->EntityType),
+      sprintf(str, "%s #%d", vohEntityType2String(entity->EntityType),
 	      		      entity->EntityLocation);
+}
+
+void vohFullEntityPath2String(SaHpiEntityPathT *path, char *str)
+{
+      int		i;
+      gchar		*name, type[100], loc[10];
+
+       for (i = 0; i < SAHPI_MAX_ENTITY_PATH; i++) {
+	    if (path->Entry[i].EntityType == SAHPI_ENT_ROOT) {
+		  break;
+	    }
+      }
+      for (i--; i >= 0; i--) {
+	    sprintf(type, "%s",
+		    vohEntityType2String(path->Entry[i].EntityType));
+	    sprintf(loc, "%d", path->Entry[i].EntityLocation);
+	    name = g_strconcat("{", type," ", loc, "}", NULL);
+	    memcpy(str, name, strlen(name));
+	    str = str + strlen(name);
+	    *str = 0;
+      }
 }
 
 const char *vohRdrType2String(SaHpiRdrTypeT type)
@@ -197,4 +221,41 @@ const char *vohRdrType2String(SaHpiRdrTypeT type)
 		{0, 0}
       };
       return ValueToString(rdr_type_map, type, "%d");
+}
+
+const char *vohCapabilities2String(SaHpiCapabilitiesT cf)
+{
+      static cMap cap_map[] = {
+	{SAHPI_CAPABILITY_RESOURCE,		"resource"},
+	{SAHPI_CAPABILITY_EVT_DEASSERTS,	"deasserts"},
+	{SAHPI_CAPABILITY_AGGREGATE_STATUS,	"aggregate_status"},
+	{SAHPI_CAPABILITY_CONFIGURATION,	"configuration"},
+	{SAHPI_CAPABILITY_MANAGED_HOTSWAP,	"managed_hotswap"},
+	{SAHPI_CAPABILITY_WATCHDOG,		"watchdog"},
+	{SAHPI_CAPABILITY_CONTROL,		"control"},
+	{SAHPI_CAPABILITY_FRU,			"FRU"},
+	{SAHPI_CAPABILITY_ANNUNCIATOR,		"annunciator"},
+	{SAHPI_CAPABILITY_POWER,		"power"},
+	{SAHPI_CAPABILITY_RESET,		"reset"},
+	{SAHPI_CAPABILITY_INVENTORY_DATA,	"inventory_data"},
+	{SAHPI_CAPABILITY_EVENT_LOG,		"event_log"},
+	{SAHPI_CAPABILITY_RDR,			"RDR"},
+	{SAHPI_CAPABILITY_SENSOR,		"sensor"},
+	{ 0, 0 }
+      };
+
+      return hpiBitMask2String(cap_map, cf);
+}
+
+const char *vohHsCapabilities2String(SaHpiHsCapabilitiesT cf)
+{
+      static cMap cap_map[] = {
+	{SAHPI_HS_CAPABILITY_AUTOEXTRACT_READ_ONLY,
+	    					"autoextract_read_only"},
+	{SAHPI_HS_CAPABILITY_INDICATOR_SUPPORTED,
+	    					"indicator_supported"},
+	{ 0, 0 }
+      };
+
+      return hpiBitMask2String(cap_map, cf);
 }
