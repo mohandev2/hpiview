@@ -258,7 +258,7 @@ gboolean hview_butpress_rlist_call(GtkWidget *widget,
 				   GdkEventButton *event,
 				   gpointer data)
 {
-      GtkWidget		*menu;
+      GtkWidget		*menu = NULL;
       GtkTreePath	*path;
       GtkTreeViewColumn	*column;
       GtkTreeModel	*store;
@@ -1830,3 +1830,234 @@ void hview_sensor_deassert_mask_set_call(GtkWidget *widget, gpointer data)
 
 	gtk_widget_destroy(dialog);
 }
+
+void hview_inventory_settings_ok_response(gpointer data)
+{
+	HviewInvDialogWidgetsT	*dw = (HviewInvDialogWidgetsT *) data;
+	HviewWidgetsT		*w = dw->parent_widgets;
+	GtkTreeModel		*model;
+	GtkTreeIter		iter,		parent;
+	GtkTreeSelection	*selection;
+	gint			page;
+	GtkWidget		*tview,	*dview;
+	guint			id,		pid,	sid;
+	gboolean		res;
+	gchar			err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	dview = w->tab_views[page].detail_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		if (!gtk_tree_model_iter_parent(model, &parent, &iter))
+			return;
+		gtk_tree_model_get(model, &parent, VOH_LIST_COLUMN_ID,
+				   &pid, -1);
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+	} else {
+		return;
+	}
+}
+
+
+void hview_inventory_settings_call(GtkWidget *widget, gpointer data)
+{
+	HviewWidgetsT		*w = (HviewWidgetsT *) data;
+	HviewInvDialogWidgetsT	dw;
+	GtkWidget		*dialog_window;
+	GtkTreeModel		*model;
+	GtkTreeIter		iter,		parent;
+	GtkTreeSelection	*selection;
+	gint			page;
+	GtkWidget		*tview;
+	GtkWidget		*hbox;
+	GtkWidget		*label;
+	guint			id,		pid,	sid;
+	GList			*info;
+	VohObjectT		*obj;
+	GtkTreeModel		*areas;
+	gint			res;
+	gchar			err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+	res = gtk_tree_selection_get_selected(selection, &model, &iter);
+	if (res == FALSE) {
+		return;
+	}
+
+	if (!gtk_tree_model_iter_parent(model, &parent, &iter))
+		return;
+
+	gtk_tree_model_get(model, &parent, VOH_LIST_COLUMN_ID, &pid, -1);
+	gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+	res = voh_check_rdr_presence(sid, pid, id, err);
+	if (res == FALSE) {
+		dialog_window = hview_get_rpt_empty_dialog_window(w);
+		hview_print(w, err);
+	} else {
+		dw.parent_widgets = w;
+		dialog_window = hview_get_inventory_settings_window(&dw);
+		dw.dialog_window = dialog_window;
+
+		res = voh_get_inventory_info(sid, pid, id, &info, err);
+
+		if (info == NULL) {
+			hview_print(w, err);
+		} else {
+			while (info != NULL) {
+				obj = (VohObjectT *) info->data;
+				hbox = gtk_hbox_new(TRUE, 5);
+				gtk_box_pack_start(GTK_BOX(dw.info_box), hbox,
+						   TRUE, FALSE, 10);
+				label = gtk_label_new(obj->name);
+				gtk_box_pack_start(GTK_BOX(hbox), label,
+						   FALSE, FALSE, 5);
+				label = gtk_label_new(obj->value.vbuffer);
+				gtk_box_pack_start(GTK_BOX(hbox), label,
+						   FALSE, FALSE, 5);
+
+				info = info->next;
+			}
+
+//			areas = gtk_combo_box_get_model(GTK_COMBO_BOX(
+//						dw.areas_box));
+
+//			res = voh_get_inventory_areas(sid, pid, id, &info, err);
+
+			if (res == FALSE) {
+				hview_print(w, err);
+			} else {/*
+				while (info != NULL) {
+					obj = (VohObjectT *) info->data;
+					gtk_tree_store_append(
+						GTK_TREE_STORE(areas),
+						&iter, NULL);
+					gtk_tree_store_set(
+						GTK_TREE_STORE(areas), &iter,
+						0, "BLLLLLL", -1); */
+			}
+				
+		}
+	}
+
+
+	gtk_widget_show_all(dialog_window);
+
+	res = gtk_dialog_run(GTK_DIALOG(dialog_window));
+	switch (res) {
+	case GTK_RESPONSE_OK:
+		hview_inventory_settings_ok_response((gpointer) &dw);
+		break;
+	default:
+		break;
+	}
+
+	gtk_widget_destroy(dialog_window);
+}
+
+gboolean hview_butpress_invareas_call(GtkWidget *widget,
+				      GdkEventButton *event,
+				      gpointer data)
+{
+      GtkWidget		*menu,		*smenu,		*fmenu;
+      GtkWidget		*item,		*sitem,		*fitem;
+      HviewWidgetsT	*w = (HviewWidgetsT *) data;
+      GList		*areas, *fields;
+      VohObjectT	*obj;
+      GtkTreeModel	*model;
+      GtkTreeIter	iter,		parent;
+      GtkTreeSelection	*selection;
+      gint		page;
+      GtkWidget		*tview;
+      guint		id,		pid,	sid;
+      gint		res;
+      gchar		err[1024];
+
+      if (event->type != GDK_BUTTON_PRESS || event->button != 1) {
+	      return TRUE;
+      }
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+	res = gtk_tree_selection_get_selected(selection, &model, &iter);
+	if (res == FALSE) {
+		return;
+	}
+
+	if (!gtk_tree_model_iter_parent(model, &parent, &iter))
+		return;
+
+	gtk_tree_model_get(model, &parent, VOH_LIST_COLUMN_ID, &pid, -1);
+	gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+
+
+      res = voh_get_idr_area_with_field(sid, pid, id, &areas, err);
+
+      if (res == FALSE) {
+	      hview_print(w, err);
+	      return TRUE;
+      }
+
+      menu = gtk_menu_new();
+      while (areas != NULL) {
+	      obj = (VohObjectT *) areas->data;
+	      item = hwidget_get_menu_item(NULL, obj->name, NULL, NULL);
+	      gtk_container_add(GTK_CONTAINER(menu), item);
+	      if (obj->data != NULL) {
+		      fields = (GList *) obj->data;
+		      smenu = gtk_menu_new();
+		      gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), smenu);
+
+		      while (fields != NULL) {
+			      obj = (VohObjectT *) fields->data;
+			      sitem = hwidget_get_menu_item(NULL, obj->name,
+					      		    NULL, NULL);
+			      gtk_container_add(GTK_CONTAINER(smenu), sitem);
+
+			      fmenu = gtk_menu_new();
+			      gtk_menu_item_set_submenu(GTK_MENU_ITEM(sitem),
+					      		fmenu);
+			      fitem = hwidget_get_menu_item(NULL, obj->data,
+					      		    NULL, NULL);
+			      gtk_container_add(GTK_CONTAINER(fmenu), fitem);
+
+			      fields = fields->next;
+		      }
+	      }
+	      areas = areas->next;
+      }
+
+      gtk_widget_show_all(menu);
+      
+      gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL, event->button,
+		      gdk_event_get_time((GdkEvent*)event));
+
+      return FALSE;
+}
+

@@ -46,4 +46,6 @@ GtkWidget *hview_get_sensor_assert_mask_window(HviewSenEventMasksWidgetsT *mdw);
 GtkWidget *hview_get_sensor_deassert_mask_window(HviewSenEventMasksWidgetsT
 									*mdw);
 
+GtkWidget *hview_get_inventory_settings_window(HviewInvDialogWidgetsT *w);
+
 #endif /* __HVIEW_WINDOWS_H__ */

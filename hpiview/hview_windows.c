@@ -1,5 +1,6 @@
 #include <gtk/gtk.h>
 
+
 #include "voh.h"
 #include "hview_service.h"
 #include "hview_widgets.h"
@@ -657,7 +658,7 @@ GtkWidget *hview_get_sensor_deassert_mask_window(HviewSenEventMasksWidgetsT
 	HviewSenDialogWidgetsT	*pw = mdw->parent_widgets;
 	GtkWidget		*dialog;
 
-	dialog = gtk_dialog_new_with_buttons("Sensor assert mask",
+	dialog = gtk_dialog_new_with_buttons("Sensor deassert mask",
 					     GTK_WINDOW(pw->dialog_window),
 					     GTK_DIALOG_MODAL |
 					        GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -666,6 +667,56 @@ GtkWidget *hview_get_sensor_deassert_mask_window(HviewSenEventMasksWidgetsT
 					     GTK_STOCK_CANCEL,
 					     GTK_RESPONSE_CANCEL,
 					     NULL);
+
+	return dialog;
+}
+
+GtkWidget *hview_get_inventory_settings_window(HviewInvDialogWidgetsT *w)
+{
+	HviewWidgetsT	*pw = w->parent_widgets;
+	GtkWidget	*dialog;
+	GtkWidget	*vbox,		*hbox;
+	GtkWidget	*frame;
+	GtkWidget	*label;
+
+	dialog = gtk_dialog_new_with_buttons("Inventory preferences",
+					     GTK_WINDOW(pw->main_window),
+					     GTK_DIALOG_MODAL |
+					        GTK_DIALOG_DESTROY_WITH_PARENT,
+					     GTK_STOCK_OK,
+					     GTK_RESPONSE_OK,
+					     GTK_STOCK_CANCEL,
+					     GTK_RESPONSE_CANCEL,
+					     NULL);
+
+	gtk_widget_set_size_request(GTK_WIDGET(dialog),
+				    HVIEW_SETTINGS_WINDOW_WIDTH,
+				    HVIEW_SETTINGS_WINDOW_HEIGHT);
+
+	vbox = gtk_vbox_new(FALSE, 5);
+	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), vbox);
+	
+	frame = gtk_frame_new("Inventory info");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, FALSE, FALSE, 5);	
+
+	w->info_box = gtk_vbox_new(FALSE, 5);
+	gtk_container_add(GTK_CONTAINER(frame), w->info_box);
+
+	frame = gtk_frame_new("");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 5);
+
+	hbox = gtk_hbox_new(FALSE, 5);
+	gtk_container_add(GTK_CONTAINER(frame),hbox);
+
+	w->areas_box = gtk_button_new_with_label(" Get/Set ");
+
+	label = gtk_label_new("Inventory fields");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 10);
+	gtk_box_pack_end(GTK_BOX(hbox), w->areas_box, FALSE, FALSE, 10);
+
+	g_signal_connect(G_OBJECT(w->areas_box), "button-press-event",
+			G_CALLBACK(hview_butpress_invareas_call),
+			pw);
 
 	return dialog;
 }

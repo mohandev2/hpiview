@@ -608,6 +608,7 @@ GtkTreeModel *voh_rdr_info(guint sessionid, guint resourceid,
       SaHpiRdrT			rdr;
       SaHpiEntryIdT		nextentryid;
       SaHpiSensorRecT		*sensor;
+      SaHpiInventoryRecT	inventory;
       SaHpiSessionIdT		sid = (SaHpiSessionIdT)sessionid;
       SaHpiResourceIdT		rid = (SaHpiResourceIdT)resourceid;
       SaHpiEntryIdT		rdrid = (SaHpiEntryIdT)rdrentryid;
@@ -769,116 +770,28 @@ GtkTreeModel *voh_rdr_info(guint sessionid, guint resourceid,
 			       1, vohEventState2String(sensor->Events,
 						       sensor->Category),
 			       -1);
-/*
-	    if (sensor->ThresholdDefn.IsAccessible == TRUE) {
-		rv = saHpiSensorThresholdsGet(sid, rid, sensor->Num,
-					      &thresholds);
-		if (rv != SA_OK) {
-		      VOH_ERROR(err, "Thresholds getting failed", rv);
-		} else {
+	    break;
+	case SAHPI_INVENTORY_RDR:
+	    inventory = rdr.RdrTypeUnion.InventoryRec;
 
-		      gtk_tree_store_append(info_store, &iter, NULL);
-		      gtk_tree_store_set(info_store, &iter,
-					 0, "Thresholds",
-					 -1);
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "FRU entity",
+			       1, vohBoolean2String(rdr.IsFru),
+			       -1);
 
-		      sprintf(name, "Low Minor %s",
-			      vohReadWriteThds2String(
-					sensor->ThresholdDefn.ReadThold,
-					sensor->ThresholdDefn.WriteThold,
-					SAHPI_STM_LOW_MINOR));
-		      gtk_tree_store_append(info_store, &child, &iter);
-		      gtk_tree_store_set(info_store, &child,
-					 0, name,
-					 1, vohSensorValue2FullString(
-					     sensor, &thresholds.LowMinor),
-					 -1);
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "Persistent",
+			       1, vohBoolean2String(inventory.Persistent),
+			       -1);
 
-		      sprintf(name, "Up Minor %s",
-			      vohReadWriteThds2String(
-					sensor->ThresholdDefn.ReadThold,
-					sensor->ThresholdDefn.WriteThold,
-					SAHPI_STM_UP_MINOR));
-		      gtk_tree_store_append(info_store, &child, &iter);
-		      gtk_tree_store_set(info_store, &child,
-					 0, name,
-					 1, vohSensorValue2FullString(sensor,
-					     &thresholds.UpMinor),
-					 -1);
-
-		      sprintf(name, "Low Major %s",
-			      vohReadWriteThds2String(
-					sensor->ThresholdDefn.ReadThold,
-					sensor->ThresholdDefn.WriteThold,
-					SAHPI_STM_LOW_MAJOR));
-		      gtk_tree_store_append(info_store, &child, &iter);
-		      gtk_tree_store_set(info_store, &child,
-					 0, name,
-					 1, vohSensorValue2FullString(sensor,
-					     &thresholds.LowMajor),
-					 -1);
-
-		      sprintf(name, "Up Major %s",
-			      vohReadWriteThds2String(
-					sensor->ThresholdDefn.ReadThold,
-					sensor->ThresholdDefn.WriteThold,
-					SAHPI_STM_UP_MAJOR));
-		      gtk_tree_store_append(info_store, &child, &iter);
-		      gtk_tree_store_set(info_store, &child,
-					 0, name,
-					 1, vohSensorValue2FullString(sensor,
-					     &thresholds.UpMajor),
-					 -1);
-
-		      sprintf(name, "Low Critical %s",
-			      vohReadWriteThds2String(
-					sensor->ThresholdDefn.ReadThold,
-					sensor->ThresholdDefn.WriteThold,
-					SAHPI_STM_LOW_CRIT));
-		      gtk_tree_store_append(info_store, &child, &iter);
-		      gtk_tree_store_set(info_store, &child,
-					 0, name,
-					 1, vohSensorValue2FullString(sensor,
-					     &thresholds.LowCritical),
-					 -1);
-
-		      sprintf(name, "Up Critical %s",
-			      vohReadWriteThds2String(
-					sensor->ThresholdDefn.ReadThold,
-					sensor->ThresholdDefn.WriteThold,
-					SAHPI_STM_UP_CRIT));
-		      gtk_tree_store_append(info_store, &child, &iter);
-		      gtk_tree_store_set(info_store, &child,
-					 0, name,
-					 1, vohSensorValue2FullString(sensor,
-					     &thresholds.UpCritical),
-					 -1);
-
-		      sprintf(name, "Low Hysteresis %s",
-			      vohReadWriteThds2String(
-					sensor->ThresholdDefn.ReadThold,
-					sensor->ThresholdDefn.WriteThold,
-					SAHPI_STM_LOW_HYSTERESIS));
-		      gtk_tree_store_append(info_store, &child, &iter);
-		      gtk_tree_store_set(info_store, &child,
-					 0, name,
-					 1, vohSensorValue2FullString(sensor,
-					     &thresholds.NegThdHysteresis),
-					 -1);
-
-		      sprintf(name, "Up Hysteresis %s",
-			      vohReadWriteThds2String(
-					sensor->ThresholdDefn.ReadThold,
-					sensor->ThresholdDefn.WriteThold,
-					SAHPI_STM_UP_HYSTERESIS));
-		      gtk_tree_store_append(info_store, &child, &iter);
-		      gtk_tree_store_set(info_store, &child,
-					 0, name,
-					 1, vohSensorValue2FullString(sensor,
-					     &thresholds.PosThdHysteresis),
-					 -1);
-		}*/
-
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    sprintf(name, "%d", inventory.Oem);
+	    gtk_tree_store_set(info_store, &iter,
+			    0, "Oem data",
+			    1, name,
+			    -1);
 	    break;
 	default:
 	    break;
@@ -2562,3 +2475,194 @@ gboolean voh_set_sensor_thresholds(guint sessionid,
 
 	return TRUE;
 }
+
+gboolean voh_get_inventory_info(guint sessionid,
+				guint resourceid,
+				guint rdrentryid,
+				GList **info,
+				gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiInventoryRecT	inventory;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiIdrInfoT		idrinfo;
+	VohObjectT		*obj;
+	GList			*info_list = NULL;
+	gchar			str[1024];
+
+	*info = NULL;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting inventory info failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_INVENTORY_RDR) {
+		VOH_ERROR(err, "Getting inventory info", -1);
+		return FALSE;
+	}
+
+	inventory = rdr.RdrTypeUnion.InventoryRec;
+
+	rv = saHpiIdrInfoGet(sid, rid, inventory.IdrId, &idrinfo);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting inventory info failed", rv);
+		return FALSE;
+	}
+
+	obj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
+	info_list = g_list_prepend(info_list, obj);
+	obj->name = g_strdup("Read only");
+	obj->state = VOH_OBJECT_READABLE;
+	obj->value.type = VOH_OBJECT_TYPE_UINT;
+	obj->value.vuint = idrinfo.ReadOnly;
+	obj->value.vbuffer = g_strdup(vohBoolean2String(idrinfo.ReadOnly));
+	obj->data = NULL;
+
+	obj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
+	info_list = g_list_prepend(info_list, obj);
+	obj->name = g_strdup("Number of areas");
+	obj->state = VOH_OBJECT_READABLE;
+	obj->value.type = VOH_OBJECT_TYPE_UINT;
+	obj->value.vuint = idrinfo.NumAreas;
+	sprintf(str, "%d", idrinfo.NumAreas);
+	obj->value.vbuffer = g_strdup(str);
+	obj->data = NULL;
+
+	obj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
+	info_list = g_list_prepend(info_list, obj);
+	obj->name = g_strdup("Inventory update counter");
+	obj->state = VOH_OBJECT_READABLE;
+	obj->value.type = VOH_OBJECT_TYPE_UINT;
+	obj->value.vuint = idrinfo.UpdateCount;
+	sprintf(str, "%d", idrinfo.UpdateCount);
+	obj->value.vbuffer = g_strdup(str);
+	obj->data = NULL;
+
+	obj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
+	info_list = g_list_prepend(info_list, obj);
+	obj->name = g_strdup("Inventory persistant");
+	obj->state = VOH_OBJECT_READABLE;
+	obj->value.type = VOH_OBJECT_TYPE_UINT;
+	obj->value.vuint = inventory.Persistent;
+	obj->value.vbuffer = g_strdup(vohBoolean2String(inventory.Persistent));
+	obj->data = NULL;
+
+	obj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
+	info_list = g_list_prepend(info_list, obj);
+	obj->name = g_strdup("FRU inventory entity");
+	obj->state = VOH_OBJECT_READABLE;
+	obj->value.type = VOH_OBJECT_TYPE_UINT;
+	obj->value.vuint = rdr.IsFru;
+	obj->value.vbuffer = g_strdup(vohBoolean2String(rdr.IsFru));
+	obj->data = NULL;
+
+	obj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
+	info_list = g_list_prepend(info_list, obj);
+	obj->name = g_strdup("Inventory name");
+	obj->state = VOH_OBJECT_READABLE;
+	obj->value.type = VOH_OBJECT_TYPE_BUFFER;
+	fixstr(&rdr.IdString, str);
+	obj->value.vbuffer = g_strdup(str);
+	obj->data = NULL;
+
+	*info = info_list;
+
+	return TRUE;
+}
+
+gboolean voh_get_idr_area_with_field(guint sessionid,
+				      guint resourceid,
+				      guint rdrentryid,
+				      GList **areas,
+				      gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiInventoryRecT	inventory;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiEntryIdT		areaid,	nextareaid;
+	SaHpiEntryIdT		fieldid, nextfieldid;
+	SaHpiIdrAreaHeaderT	area_header;
+	SaHpiIdrFieldT		field;
+	VohObjectT		*obj;
+	VohObjectT		*fobj;
+	GList			*area_list = NULL;
+	GList			*field_list = NULL;
+	gchar			str[1024];
+
+	*areas = NULL;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting inventory info failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_INVENTORY_RDR) {
+		VOH_ERROR(err, "Getting inventory info", -1);
+		return FALSE;
+	}
+
+	inventory = rdr.RdrTypeUnion.InventoryRec;
+
+	areaid = SAHPI_FIRST_ENTRY;
+	while (areaid != SAHPI_LAST_ENTRY) {
+		rv = saHpiIdrAreaHeaderGet(sid, rid, inventory.IdrId,
+					   SAHPI_IDR_AREATYPE_UNSPECIFIED,
+					   areaid, &nextareaid, &area_header);
+		if (rv != SA_OK) {
+			break;
+		}
+
+		obj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
+		area_list = g_list_prepend(area_list, obj);
+		obj->name = g_strdup(vohIdrAreaType2String(area_header.Type));
+		obj->state = VOH_OBJECT_READABLE;
+		obj->value.type = VOH_OBJECT_TYPE_UINT;
+		obj->data = NULL;
+
+		field_list = NULL;
+
+		fieldid = SAHPI_FIRST_ENTRY;
+		while (fieldid != SAHPI_LAST_ENTRY) {
+			rv = saHpiIdrFieldGet(sid, rid, inventory.IdrId, areaid,
+					      SAHPI_IDR_FIELDTYPE_UNSPECIFIED,
+					      fieldid, &nextfieldid, &field);
+
+			if (rv != SA_OK) {
+				break;
+			}
+
+			fobj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
+			field_list = g_list_prepend(field_list, fobj);
+			fobj->name = g_strdup(vohIdrFieldType2String(
+								field.Type));
+			fobj->state = VOH_OBJECT_READABLE;
+			fobj->value.type = VOH_OBJECT_TYPE_UINT;
+
+			fixstr(&(field.Field), str);
+			fobj->data = g_strdup(str);
+
+			fieldid = nextfieldid;
+		}
+
+		obj->data = field_list;
+
+		areaid = nextareaid;
+	}
+
+	*areas = area_list;
+
+	return TRUE;
+}
+
