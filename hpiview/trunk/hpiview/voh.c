@@ -72,15 +72,103 @@ static void v_remove_domain(SaHpiDomainIdT did, VohDomainsT *dlist)
 }
 */
 
+static gchar	ascii6_codes[64] = {
+		' ', '!', '"', '#', '$',  '%', '&', '\'',
+		'(', ')', '*', '+', ',',  '-', '.', '/',
+		'0', '1', '2', '3', '4',  '5', '6', '7',
+		'8', '9', ':', ';', '<',  '=', '>', '?',
+		'&', 'A', 'B', 'C', 'D',  'E', 'F', 'G',
+		'H', 'I', 'J', 'K', 'L',  'M', 'N', 'O',
+		'P', 'Q', 'R', 'S', 'T',  'U', 'V', 'W',
+		'X', 'Y', 'Z', '[', '\\', ']', '^', '_' };
+
+static int ascii6tostring(char *ascii, int n_ascii, char *str, int n)
+{
+	int	ascii_ind = 0, ascii_len, i;
+	int	res = 0;
+	char	byte = 0;
+
+	ascii_len = n_ascii * 8 / 6;
+	memset(str, 0, n);
+	if (ascii_len > n) ascii_len = n;
+	for (i = 0; i < ascii_len; i++) {
+		switch (i % 4) {
+			case 0:
+				byte = ascii[ascii_ind++];
+				res = byte & 0x3F;
+				break;
+			case 1:
+				res = (byte & 0xC0) >> 6;
+				byte = ascii[ascii_ind++];
+				res += (byte & 0x0F) << 2;
+				break;
+			case 2:
+				res = (byte & 0xF0) >> 4;
+				byte = ascii[ascii_ind++];
+				res += (byte & 0x03) << 4;
+				break;
+			case 3:
+				res = byte & 0xFC;
+				res >>= 2;
+				break;
+		};
+		str[i] = ascii6_codes[res];
+	};
+	return(ascii_len);
+}
+
 static void fixstr(SaHpiTextBufferT *strptr, char *outbuff)
 {
-      size_t		datalen = strptr->DataLength;
-      char		*str = (char *)strptr->Data;
+	size_t		datalen = strptr->DataLength;
+	size_t		len;
+	gint		tmp_ind,	i,	c;
+	char		*str = (char *)strptr->Data;
+	static gchar	*hex_codes = "0123456789ABCDEF";
+	static gchar	*bcdplus_codes = "0123456789 -.???";
 
-      if (datalen != 0) {
-	    strncpy(outbuff, (char *)str, datalen);
-      }
-      *(outbuff + datalen) = '\0';
+	if (datalen < 2) {
+		*outbuff = '\0';
+		return;
+	}
+	switch (strptr->DataType) {
+	case SAHPI_TL_TYPE_UNICODE:
+		*outbuff = '\0';
+		return;
+	case SAHPI_TL_TYPE_BCDPLUS:
+		len = datalen * 2;
+		outbuff[len] = '\0';
+		tmp_ind = 0;
+		for (i = 0; i < datalen; i++) {
+			c = (str[i] & 0xF0) >> 4;
+			outbuff[tmp_ind++] = bcdplus_codes[c];
+			c = str[i] & 0x0F;
+			outbuff[tmp_ind++] = bcdplus_codes[c];
+		};
+		return;
+	case SAHPI_TL_TYPE_ASCII6:
+		len = datalen * 8 / 6;
+		*(outbuff + len) = '\0';
+		ascii6tostring(str, datalen, outbuff, len);
+		return;
+	case SAHPI_TL_TYPE_TEXT:
+		strncpy(outbuff, (char *)str, datalen);
+		*(outbuff + datalen) = '\0';
+		return;
+	case SAHPI_TL_TYPE_BINARY:
+		len = datalen * 2;
+		*(outbuff + len) = '\0';
+		tmp_ind = 0;
+		for (i = 0; i < datalen; i++) {
+			c = (str[i] & 0xF0) >> 4;
+			outbuff[tmp_ind++] = hex_codes[c];
+			c = str[i] & 0x0F;
+			outbuff[tmp_ind++] = hex_codes[c];
+		};
+		return;
+	default:
+		*(outbuff) = '\0';
+		return;
+	}
 }
 
 static void fillstr(SaHpiTextBufferT *buf, const gchar *str)
