@@ -402,8 +402,9 @@ gchar *voh_read_sensor(guint rid, guint id, gchar *err)
       }
 
       val = g_malloc0(100);
-      sprintf(val, "%s",
-	      vohSensorValue2String(&reading));
+      val = g_strconcat(vohSensorValue2String(&reading), " (",
+			vohSensorUnits2Short(sensor->DataFormat.BaseUnits),
+			")", NULL);
 
       return val;
 }
