@@ -10,6 +10,26 @@ typedef struct cMapS
   const char  *m_name;
 } cMap;
 
+GList *create_object_list(cMap *map)
+{
+	GList		*list = NULL;
+	VohObjectT	*data;
+
+	while (map->m_name) {
+		data = (VohObjectT *) g_malloc(sizeof(VohObjectT));
+		data->name = g_strdup(map->m_name);
+		data->numerical = map->m_value;
+		data->value.type = 0;
+		data->state = 0;
+		data->data = NULL;
+		list = g_list_prepend(list, (gpointer) data);
+
+		map++;
+	}
+
+	return list;
+}
+
 GList *values2list(cMap *map)
 {
 	GList		*list = NULL;
@@ -943,6 +963,24 @@ const char *vohSensorThdMask2String(SaHpiSensorThdMaskT mask)
 
 }
 
+GList *vohSensorThdMask2List(void)
+{
+      static cMap mask_map[] = {
+		{SAHPI_STM_LOW_MINOR,		"Low Minor"},
+		{SAHPI_STM_LOW_MAJOR,		"Low Major"},
+		{SAHPI_STM_LOW_CRIT,		"Low Critical"},
+		{SAHPI_STM_UP_MINOR,		"Up Minor"},
+		{SAHPI_STM_UP_MAJOR,		"Up Major"},
+		{SAHPI_STM_UP_CRIT,		"Up Critical"},
+		{SAHPI_STM_UP_HYSTERESIS,	"Up Hysteresis"},
+		{SAHPI_STM_LOW_HYSTERESIS,	"Low Hysteresis"},
+		{0, 0}
+      };
+
+      return create_object_list(mask_map);
+
+}
+
 const char *vohReadWriteThds2String(SaHpiSensorThdMaskT readm,
 				    SaHpiSensorThdMaskT writem,
 				    SaHpiSensorThdMaskT mask)
@@ -957,6 +995,50 @@ const char *vohReadWriteThds2String(SaHpiSensorThdMaskT readm,
       } else {
 	    return "(NA)";
       }
+}
+
+void *vohFillSensorReadingValue(VohObjectT *obj, SaHpiSensorReadingT *sr)
+{
+	SaHpiSensorReadingTypeT		type = sr->Type;
+	SaHpiSensorReadingUnionT	value = sr->Value;
+
+	if (obj == NULL) {
+		return;
+	}
+
+	if (sr == NULL) {
+		obj->state = VOH_OBJECT_NOT_AVAILABLE;
+		return;
+	}
+
+	if (sr->IsSupported == FALSE) {
+		obj->state = VOH_OBJECT_NOT_AVAILABLE;
+		return;
+	}
+
+	switch (type) {
+	case SAHPI_SENSOR_READING_TYPE_INT64:
+		obj->value.vbuffer = g_strdup(vohSensorValue2String(sr));
+		obj->value.vint = value.SensorInt64;
+		obj->value.type = VOH_OBJECT_TYPE_INT;
+		break;
+	case SAHPI_SENSOR_READING_TYPE_UINT64:
+		obj->value.vbuffer = g_strdup(vohSensorValue2String(sr));
+		obj->value.vuint = value.SensorUint64;
+		obj->value.type = VOH_OBJECT_TYPE_UINT;
+		break;
+	case SAHPI_SENSOR_READING_TYPE_FLOAT64:
+		obj->value.vbuffer = g_strdup(vohSensorValue2String(sr));
+		obj->value.vfloat = value.SensorFloat64;
+		obj->value.type = VOH_OBJECT_TYPE_FLOAT;
+		break;
+	case SAHPI_SENSOR_READING_TYPE_BUFFER:
+		obj->value.vbuffer = g_strdup(vohSensorValue2String(sr));
+		obj->value.type = VOH_OBJECT_TYPE_BUFFER;
+	       	break;
+	default:
+		obj->state = VOH_OBJECT_NOT_AVAILABLE;
+	}
 }
 
 const char *vohSensorValue2String(SaHpiSensorReadingT *sv)

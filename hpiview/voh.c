@@ -2377,3 +2377,188 @@ GList *voh_get_sensor_threshold_info(guint sessionid,
 	return info;
 }
 
+gboolean voh_get_sensor_thresholds(guint sessionid,
+				   guint resourceid,
+				   guint rdrentryid,
+				   GList **thrlist,
+				   gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiSensorThresholdsT	thresholds;
+	VohObjectT		*obj;
+	GList			*thresholds_list = NULL;
+
+	*thrlist = NULL;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor thresholds failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Getting sensor thresholds failed", -1);
+		return FALSE;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	rv = saHpiSensorThresholdsGet(sid, rid, sensor.Num, &thresholds);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting sensor thresholds failed", rv);
+		return FALSE;
+	}
+
+	thresholds_list = vohSensorThdMask2List();
+
+	*thrlist = thresholds_list;
+
+	while (thresholds_list != NULL) {
+		obj = (VohObjectT *) (thresholds_list->data);
+		obj->state = VOH_OBJECT_NOT_AVAILABLE;
+		if (sensor.ThresholdDefn.ReadThold & obj->numerical) {
+			obj->state |= VOH_OBJECT_READABLE;
+		}
+		if (sensor.ThresholdDefn.WriteThold & obj->numerical) {
+			obj->state |= VOH_OBJECT_WRITABLE;
+		}
+		obj->data = g_strdup(vohSensorUnits2Short(
+					sensor.DataFormat.BaseUnits));
+		switch (obj->numerical) {
+		case SAHPI_STM_LOW_MINOR:
+			vohFillSensorReadingValue(obj, &thresholds.LowMinor);
+			break;
+		case SAHPI_STM_LOW_MAJOR:
+			vohFillSensorReadingValue(obj, &thresholds.LowMajor);
+			break;
+		case SAHPI_STM_LOW_CRIT:
+			vohFillSensorReadingValue(obj, &thresholds.LowCritical);
+			break;
+		case SAHPI_STM_UP_MINOR:
+			vohFillSensorReadingValue(obj, &thresholds.UpMinor);
+			break;
+		case SAHPI_STM_UP_MAJOR:
+			vohFillSensorReadingValue(obj, &thresholds.UpMajor);
+			break;
+		case SAHPI_STM_UP_CRIT:
+			vohFillSensorReadingValue(obj, &thresholds.UpCritical);
+			break;
+		case SAHPI_STM_LOW_HYSTERESIS:
+			vohFillSensorReadingValue(obj,
+						  &thresholds.NegThdHysteresis);
+			break;
+		case SAHPI_STM_UP_HYSTERESIS:
+			vohFillSensorReadingValue(obj,
+						  &thresholds.PosThdHysteresis);
+			break;
+		}
+		thresholds_list = thresholds_list->next;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_set_sensor_thresholds(guint sessionid,
+				   guint resourceid,
+				   guint rdrentryid,
+				   GList *thrlist,
+				   gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiSensorRecT		sensor;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiSensorThresholdsT	thresholds;
+	SaHpiSensorReadingT	*thr;
+	VohObjectT		*obj;
+
+	if (thrlist == NULL) {
+		VOH_ERROR(err, "Setting sensor threshold failed", -1);
+		return FALSE;
+	}
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting sensor thresholds failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_SENSOR_RDR) {
+		VOH_ERROR(err, "Setting sensor thresholds failed", -1);
+		return FALSE;
+	}
+
+	sensor = rdr.RdrTypeUnion.SensorRec;
+
+	rv = saHpiSensorThresholdsGet(sid, rid, sensor.Num, &thresholds);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting sensor thresholds failed", rv);
+		return FALSE;
+	}
+	
+	while (thrlist != NULL) {
+		obj = (VohObjectT *) (thrlist->data);
+		switch (obj->numerical) {
+		case SAHPI_STM_LOW_MINOR:
+			thr = &(thresholds.LowMinor);	
+			break;
+		case SAHPI_STM_LOW_MAJOR:
+			thr = &(thresholds.LowMajor);
+			break;
+		case SAHPI_STM_LOW_CRIT:
+			thr = &(thresholds.LowCritical);
+			break;
+		case SAHPI_STM_UP_MINOR:
+			thr = &(thresholds.UpMinor);
+			break;
+		case SAHPI_STM_UP_MAJOR:
+			thr = &(thresholds.UpMajor);
+			break;
+		case SAHPI_STM_UP_CRIT:
+			thr = &(thresholds.UpCritical);
+			break;
+		case SAHPI_STM_LOW_HYSTERESIS:
+			thr = &(thresholds.NegThdHysteresis);
+			break;
+		case SAHPI_STM_UP_HYSTERESIS:
+			thr = &(thresholds.PosThdHysteresis);
+			break;
+		}
+
+		switch (obj->value.type) {
+		case VOH_OBJECT_TYPE_INT:
+			thr->Value.SensorInt64 = obj->value.vint;
+			thr->Type = SAHPI_SENSOR_READING_TYPE_INT64;
+			break;
+		case VOH_OBJECT_TYPE_UINT:
+			thr->Value.SensorUint64 = obj->value.vuint;
+			thr->Type = SAHPI_SENSOR_READING_TYPE_UINT64;
+			break;
+		case VOH_OBJECT_TYPE_FLOAT:
+			thr->Value.SensorFloat64 = obj->value.vfloat;
+			thr->Type = SAHPI_SENSOR_READING_TYPE_FLOAT64;
+			break;
+		}
+		thrlist = thrlist->next;
+	}
+
+	rv = saHpiSensorThresholdsSet(sid, rid, sensor.Num, &thresholds);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting sensor thresholds failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}

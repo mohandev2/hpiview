@@ -165,5 +165,16 @@ GList *voh_get_sensor_threshold_info(guint sessionid,
 				     guint rdrentryid,
 				     gchar *err);
 
+gboolean voh_get_sensor_thresholds(guint sessionid,
+				   guint resourceid,
+				   guint rdrentryid,
+				   GList **thrlist,
+				   gchar *err);
+gboolean voh_set_sensor_thresholds(guint sessionid,
+				   guint resourceid,
+				   guint rdrentryid,
+				   GList *thrlist,
+				   gchar *err);
+
 #endif /* __VOH_H__ */
 

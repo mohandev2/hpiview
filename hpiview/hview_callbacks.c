@@ -1303,7 +1303,10 @@ void hview_sensor_settings_ok_response(gpointer data)
 	GtkTreeSelection	*selection;
 	gint			page;
 	GtkWidget		*tview,	*dview;
-	guint			id,		pid,	sid;
+	GList			*thrlist = NULL,	*setlist = NULL;
+	VohObjectT		*obj,		*setobj;
+	gdouble			val;
+	guint			id,		pid,	sid,	capability;
 	gboolean		res,		status;
 	gchar			err[1024];
 
@@ -1324,7 +1327,8 @@ void hview_sensor_settings_ok_response(gpointer data)
 			return;
 		gtk_tree_model_get(model, &parent, VOH_LIST_COLUMN_ID,
 				   &pid, -1);
-		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id,
+				   VOH_LIST_COLUMN_CAPABILITY, &capability, -1);
 	} else {
 		return;
 	}
@@ -1345,6 +1349,43 @@ void hview_sensor_settings_ok_response(gpointer data)
 		hview_print(w, err);
 	}
 
+	if (capability & VOH_ITER_SENSOR_CAPABILITY_THRESHOLD) {
+		thrlist = dw->threshold_tab.thrlist;
+		while (thrlist != NULL) {
+			obj = (VohObjectT *) (thrlist)->data;
+			if (obj->state & VOH_OBJECT_WRITABLE) {
+				val = gtk_spin_button_get_value(
+						GTK_SPIN_BUTTON(obj->data));
+				setobj = g_malloc(sizeof(VohObjectT));
+				setobj->name = NULL;
+				setobj->numerical = obj->numerical;
+				setobj->value.type = obj->value.type;
+				switch (setobj->value.type) {
+				case VOH_OBJECT_TYPE_INT:
+					setobj->value.vint = (gint) val;
+					break;
+				case VOH_OBJECT_TYPE_UINT:
+					setobj->value.vuint = (guint) val;
+					break;
+				case VOH_OBJECT_TYPE_FLOAT:
+					setobj->value.vfloat = (gfloat) val;
+					break;
+				default:
+					break;
+				}
+				setlist = g_list_prepend(setlist, setobj);
+			}
+			thrlist = thrlist->next;
+		}
+
+		if (setlist) {
+			res = voh_set_sensor_thresholds(sid, pid, id,
+							setlist, err);
+			if (res == FALSE) {
+				hview_print(w, err);
+			}
+		}
+	}
 }
 
 void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
@@ -1363,8 +1404,11 @@ void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
 	GtkWidget		*hbox;
 	GtkWidget		*but;
 	GList			*sen_info;
+	VohObjectT		*obj;
 	gboolean		status;
 	gint			res;
+	gdouble			min = 0,	max = 100,	step = 1;
+	gdouble			vl = 0;
 	gchar			err[1024];
 
 	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
@@ -1453,27 +1497,67 @@ void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
 
 	if (capability & VOH_ITER_SENSOR_CAPABILITY_THRESHOLD) {
 
-		sen_info = voh_get_sensor_threshold_info(sid, pid, id, err);
+		res = voh_get_sensor_thresholds(sid, pid, id,
+						     &sen_info, err);
 
-		if (sen_info == NULL) {
+		if (res == FALSE) {
 			hview_print(w, err);
 			label = gtk_label_new("UNKNOWN");
 			gtk_box_pack_start(GTK_BOX(dw.threshold_tab.info_box),
 					   label, TRUE, TRUE, 10);
+			dw.threshold_tab.thrlist = NULL;
 		} else {
+			dw.threshold_tab.thrlist = sen_info;
 			while (sen_info != NULL) {
-				hbox = gtk_hbox_new(FALSE, 10);
+				obj = (VohObjectT *) sen_info->data;
+				if (obj->data)
+					g_free(obj->data);
+
+				hbox = gtk_hbox_new(TRUE, 10);
 				gtk_box_pack_start(GTK_BOX(
 						dw.threshold_tab.info_box),
-						hbox, FALSE, FALSE, 2);
-				label = gtk_label_new(sen_info->data);
+						hbox, TRUE, FALSE, 2);
+				label = gtk_label_new(obj->name);
 				gtk_box_pack_start(GTK_BOX(hbox),
 						   label, FALSE, FALSE, 10);
 
-/*				but = gtk_spin_button_new_with_range(-10.2,
-								     10.2, 0.1);
+				if (obj->state & VOH_OBJECT_WRITABLE) {
+					switch (obj->value.type) {
+					case VOH_OBJECT_TYPE_INT:
+						vl = (gdouble) obj->value.vint;
+						min = 0 - G_MAXDOUBLE;
+						max = G_MAXDOUBLE;
+						step = vl / 100;
+						step = 1;
+						break;
+					case VOH_OBJECT_TYPE_UINT:
+						vl = (gdouble) obj->value.vuint;
+						min = 0;
+						max = G_MAXDOUBLE;
+						step = 1;
+						break;
+					case VOH_OBJECT_TYPE_FLOAT:
+						vl = (gdouble)obj->value.vfloat;
+						min = 0 - G_MAXFLOAT;
+						max = G_MAXFLOAT;
+						step = 0.1;
+						break;
+					default:
+						break;
+					}
+					but = gtk_spin_button_new_with_range(
+								min, max, step);
+					obj->data = (gpointer) but;
+					gtk_spin_button_set_value(
+							GTK_SPIN_BUTTON(but),
+							vl);
+				} else if (obj->state & VOH_OBJECT_READABLE) {
+					but = gtk_label_new(obj->value.vbuffer);
+				} else {
+					but = gtk_label_new ("NOT AVAILABLE");
+				}
 				gtk_box_pack_start(GTK_BOX(hbox), but,
-						   TRUE, FALSE, 10); */
+						   TRUE, FALSE, 10);	
 
 				sen_info = sen_info->next;
 			}

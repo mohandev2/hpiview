@@ -4,6 +4,7 @@
 
 #include <SaHpi.h>
 #include <glib.h>
+#include "voh_types.h"
 
 const char *vohBoolean2String(gboolean b);
 const char *vohTime2String(SaHpiTimeT time);
@@ -38,6 +39,8 @@ const char *vohSwEventType2String(SaHpiSwEventTypeT evtype);
 
 
 GList *vohEventState2List(SaHpiEventCategoryT category);
+GList *vohSensorThdMask2List(void);
+void *vohFillSensorReadingValue(VohObjectT *obj, SaHpiSensorReadingT *sr);
 
 #endif
 
