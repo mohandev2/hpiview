@@ -26,7 +26,6 @@
 //                  cHpiItem
 //////////////////////////////////////////////////
 
-
 cHpiItem::cHpiItem( QListView *parent, const char *name )
   : QListViewItem( parent, name ), m_mark( true )
 {
@@ -67,18 +66,51 @@ cHpiItem::activate()
 
 
 void
-cHpiItem::mark( bool m, bool rec )
+cHpiItem::mark()
 {
-  m_mark = m;
-  
-  if ( !rec )
-       return;
+  // mark item an all its parents
+  cHpiItem *item = this;
+
+  do
+     {
+       item->m_mark = true;
+
+       QListViewItem *p = item->parent();
+
+       if ( p == 0 )
+	    return;
+
+       item = dynamic_cast< cHpiItem * >( p );
+     }
+  while( item );
+}
+
+
+void
+cHpiItem::markDown()
+{
+  m_mark = true;
 
   cHpiItem *child = (cHpiItem *)firstChild();
 
   while( child )
      {
-       child->mark( m );
+       child->markDown();
+       child = (cHpiItem *)child->nextSibling();
+     }
+}
+
+
+void
+cHpiItem::unmark()
+{
+  m_mark = false;
+
+  cHpiItem *child = (cHpiItem *)firstChild();
+
+  while( child )
+     {
+       child->unmark();
        child = (cHpiItem *)child->nextSibling();
      }
 }
@@ -144,7 +176,6 @@ cHpiResourceRoot::createEntityPath( const SaHpiEntityPathT &path, int max )
       if ( !item )
            item = new cHpiResourceEntity( parent, str, *e );
 
-      item->mark( true );
       parent = item;
     }
 
@@ -162,6 +193,8 @@ cHpiResourceRoot::discoverResources()
        theApp->LogError( "saHpiResourcesDiscover: ", err );
        return;
      }
+
+  unmark();
 
   SaHpiEntryIdT next = SAHPI_FIRST_ENTRY;
 
@@ -200,7 +233,7 @@ cHpiResourceRoot::discoverResources()
        if ( !item )
             item = new cHpiResourceRptItem( parent, name, *e, entry );
 
-       item->mark( true );
+       item->mark();
 
        parent = item;
 
@@ -231,8 +264,12 @@ cHpiResourceRoot::discoverResources()
 
                  parent = createEntityPath( rdr.Entity, 0 );
 
+		 char str[257];
+		 memcpy( str, rdr.IdString.Data, 256 );
+		 str[rdr.IdString.DataLength] = 0;
+
                  name = QString( "%1 %2" )
-                   .arg( (char *)rdr.IdString.Data )
+                   .arg( str )
                    .arg( rdr.RecordId );
 
                  item = parent->findChild( name );
@@ -260,47 +297,48 @@ cHpiResourceRoot::discoverResources()
                                 for( int i = 0; d->DataRecords[i]; i++ )
                                    {
                                      SaHpiInventDataRecordT *r = d->DataRecords[i];
+				     cHpiItem *iv = 0;
 
                                      switch( r->RecordType )
                                         {
                                           case SAHPI_INVENT_RECTYPE_INTERNAL_USE:
-                                               new cHpiResourceInventoryInternalUse( item, "InternalUse", &r->RecordData.InternalUse );
+                                               iv = new cHpiResourceInventoryInternalUse( item, "InternalUse", &r->RecordData.InternalUse );
                                                break;
 
                                           case SAHPI_INVENT_RECTYPE_CHASSIS_INFO:
-                                               new cHpiResourceInventoryChassis( item, "Chassis", &r->RecordData.ChassisInfo );
+                                               iv = new cHpiResourceInventoryChassis( item, "Chassis", &r->RecordData.ChassisInfo );
                                                break;
 
                                           case SAHPI_INVENT_RECTYPE_BOARD_INFO:
-                                               new cHpiResourceInventoryBoard( item, "Board", &r->RecordData.BoardInfo );
+                                               iv = new cHpiResourceInventoryBoard( item, "Board", &r->RecordData.BoardInfo );
                                                break;
 
                                           case SAHPI_INVENT_RECTYPE_PRODUCT_INFO:
-                                               new cHpiResourceInventoryProduct( item, "Product", &r->RecordData.ProductInfo );
+                                               iv = new cHpiResourceInventoryProduct( item, "Product", &r->RecordData.ProductInfo );
                                                break;
 
                                           case SAHPI_INVENT_RECTYPE_OEM:
-                                               new cHpiResourceInventoryOem( item, "Oem", &r->RecordData.OemData );
+                                               iv = new cHpiResourceInventoryOem( item, "Oem", &r->RecordData.OemData );
                                                break;
                                         }
+
+				     iv->mark();
                                    }
                               }
                          }
                       else
                            item = new cHpiResourceRdr( parent, name, rdr );
                     }
+		 else
+		      item->markDown();
 
-                 item->mark( true, true );
+                 item->mark();
                }
           }
      }
   while( next != SAHPI_LAST_ENTRY );
 
-  mark( true );
-
   deleteUnmark();
-
-  mark( false, true );
 }
 
 
@@ -433,15 +471,15 @@ cHpiResourceInventoryOem::activate()
 
 
 void
-cHpiEventRoot::getEvents()
+cHpiEventRoot::getEvents( cHpiResourceRoot *r )
 {
-  while ( getEvent() )
+  while ( getEvent( r ) )
        ;
 }
 
 
 bool
-cHpiEventRoot::getEvent()
+cHpiEventRoot::getEvent( cHpiResourceRoot *r )
 {
   SaHpiEventT event;
   SaHpiRdrT rdr;
@@ -462,6 +500,9 @@ cHpiEventRoot::getEvent()
   new cHpiEvent( this, QString( "%1 %2" )
                  .arg( m_current++ )
                  .arg( hpiEventType2String( event.EventType ) ), event, rdr, rpt_entry );
+
+  if ( event.EventType == SAHPI_ET_HOTSWAP )
+       r->discoverResources();
 
   return false;
 }
@@ -514,7 +555,7 @@ cHpiViewResource::cHpiViewResource( QWidget *parent, const char* name )
 
   // events
   m_event = new cHpiEventRoot( this, "Events" );
-  m_event->getEvents();
+  m_event->getEvents( m_resource );
 
   m_event_timer = new QTimer( this );
   connect( m_event_timer, SIGNAL( timeout() ), SLOT( eventTimeout() ) );
@@ -525,13 +566,13 @@ cHpiViewResource::cHpiViewResource( QWidget *parent, const char* name )
 void
 cHpiViewResource::resourceTimeout()
 {
-  m_resource->discoverResources();
+  //m_resource->discoverResources();
 }
 
 
 void
 cHpiViewResource::eventTimeout()
 {
-  m_event->getEvents();
+  m_event->getEvents( m_resource );
 }
 

@@ -38,8 +38,10 @@ public:
 
   virtual void activate();
 
-  void mark( bool m = true, bool rec = false );
+  void mark();
+  void markDown();
 
+  void unmark();
   void deleteUnmark();
 
   bool isName( const char *name )
@@ -133,7 +135,6 @@ public:
     : cHpiItem( parent, name ), m_internal( iu )
   {
     setText( 1, "Internal Use" );
-    mark( true );
   }
 
   virtual void activate();
@@ -150,7 +151,6 @@ public:
     : cHpiItem( parent, name ), m_chassis( ch )
   {
     setText( 1, "Chassis" );
-    mark( true );
   }
 
   virtual void activate();
@@ -167,7 +167,6 @@ public:
     : cHpiItem( parent, name ), m_board( board )
   {
     setText( 1, "Board" );
-    mark( true );
   }
 
   virtual void activate();
@@ -184,7 +183,6 @@ public:
     : cHpiItem( parent, name ), m_product( pr )
   {
     setText( 1, "Product" );
-    mark( true );
   }
 
   virtual void activate();
@@ -201,7 +199,6 @@ public:
     : cHpiItem( parent, name ), m_oem( oem )
   {
     setText( 1, "Oem" );
-    mark( true );
   }
 
   virtual void activate();
@@ -212,7 +209,7 @@ class cHpiEventRoot : public cHpiItem
 {
   int m_current;
 
-  bool getEvent();
+  bool getEvent( cHpiResourceRoot *r );
 
 public:
   cHpiEventRoot( QListView *parent, const char *name )
@@ -220,7 +217,7 @@ public:
   {
   }
 
-  void getEvents();
+  void getEvents( cHpiResourceRoot *r );
 };
 
 

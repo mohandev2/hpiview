@@ -58,12 +58,30 @@ tableEntryHex( QTable *table, int &idx, const char *str1, unsigned int v )
 
 
 void
+tableEntryTextBuffer( QTable *table, int &idx, const char *name, 
+                      const SaHpiTextBufferT *tb )
+{
+  if ( tb == 0 || tb->DataLength == 0 )
+     {
+       tableEntry( table, idx, name, "" );
+       return;
+     }
+
+  char str[257];
+  memcpy( str, tb->Data, 256 );
+  str[tb->DataLength] = 0;
+
+  tableEntry( table, idx, name, str );
+}
+
+
+void
 tableRptEntry( QTable *table, int &idx, const SaHpiRptEntryT &rpt )
 {
   tableEntryInt( table, idx, "EntityId", rpt.EntryId );
   tableEntryInt( table, idx, "ResourceId", rpt.ResourceId );
   tableEntry   ( table, idx, "Capabilities", hpiCapabilities2String( rpt.ResourceCapabilities ) );
-  tableEntry   ( table, idx, "Tag", (char *)rpt.ResourceTag.Data );
+  tableEntryTextBuffer( table, idx, "Tag", &rpt.ResourceTag );
   tableEntry   ( table, idx, "Severity", hpiSeverity2String( rpt.ResourceSeverity ) );
   tableEntryHex( table, idx, "ResourceRev", rpt.ResourceInfo.ResourceRev );
   tableEntryHex( table, idx, "SpecificVer", rpt.ResourceInfo.SpecificVer );
@@ -220,8 +238,8 @@ tableRdr( QTable *table, int &idx, const SaHpiRdrT &rdr )
 {
   tableEntryInt( table, idx, "RecordId", rdr.RecordId );
   tableEntry( table, idx, "RdrType", hpiRdrType2String( rdr.RdrType ) );
-  tableEntry( table, idx, "IdString", (const char *)rdr.IdString.Data );
-  
+  tableEntryTextBuffer( table, idx, "IdString", &rdr.IdString );
+
   switch( rdr.RdrType )
      {
        case SAHPI_SENSOR_RDR:
@@ -295,22 +313,6 @@ tableEvent( QTable *table, int &idx, const SaHpiEventT &event )
        case SAHPI_ET_USER:
             break;
      }
-}
-
-
-void
-tableEntryTextBuffer( QTable *table, int &idx, const char *name, 
-                      SaHpiTextBufferT *tb )
-{
-  if ( tb == 0 || tb->DataLength == 0 )
-     {
-       tableEntry( table, idx, name, "" );
-       return;
-     }
-
-  tb->Data[tb->DataLength] = 0;
-
-  tableEntry( table, idx, name, (char *)tb->Data );
 }
 
 
