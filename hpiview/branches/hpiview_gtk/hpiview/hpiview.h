@@ -11,7 +11,7 @@
 #define HVIEW_RESOURCE_COLUMN_TITLE	"\tResources"
 
 #define HVIEW_MAIN_WINDOW_WIDTH		500
-#define HVIEW_MAIN_WINDOW_HEIGHT	400
+#define HVIEW_MAIN_WINDOW_HEIGHT	450
 #define HVIEW_LOG_WINDOW_WIDTH		HVIEW_MAIN_WINDOW_WIDTH
 #define HVIEW_LOG_WINDOW_HEIGHT		150
 #define HVIEW_DETAIL_WINDOW_WIDTH	300
@@ -26,17 +26,19 @@
 #define HVIEW_TREE_STORE_IS_UNKNOWN	-1
 
 
-static int hview_init(void);
+static void hview_init(void);
 
 static GtkWidget *hview_get_log_window(void);
 static GtkWidget *hview_get_detail_window(void);
 static GtkWidget *hview_get_tree_window(void);
-static GtkWidget *hview_get_menubar();
+static GtkWidget *hview_get_menubar(void);
+static GtkWidget *hview_get_toolbar(void);
 
 static void hview_quit_call(void);
 static void hview_clear_log_call(void);
 static void hview_load_plugin_call(void);
 static void hview_unload_plugin_call(void);
+static void hview_redescover_call(void);
 static void hview_about_call(void);
 static void hview_tree_column_activated_call(GtkTreeViewColumn *column);
 static void hview_tree_row_activated_call(void);
@@ -44,5 +46,7 @@ static void hview_tree_row_selected_call(GtkTreeSelection *selection);
 
 static int hview_which_tree_store(GtkTreeViewColumn *column);
 static void hview_print(const gchar *string);
+static void hview_statusbar_push(const gchar *string);
 
+void progress_window(void);
 #endif /* __HPIVIEW_H__ */

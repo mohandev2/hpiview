@@ -10,7 +10,8 @@ bin_PROGRAMS = hpiview
 
 hpiview_SOURCES = \
 	hpiview.c hpiview.h \
-	voh.c voh.h
+	voh.c voh.h \
+	voh_string.c voh_string.h
 
 hpiview_LDADD = @PACKAGE_LIBS@ -L /usr/local/lib -lopenhpi
 
