@@ -18,31 +18,6 @@
 #ifndef __HVIEW_SERVICE_H__
 #define __HVIEW_SERVICE_H__
 
-#define HVIEW_VERSION		2.0
-#define HVIEW_NAME_VERSION	"OpenHpi View version: 2.0"
-
-#define HVIEW_ABOUT	"OpenHpi View ver. 2.0\n Author: Denis Sadykov, 2004"
-
-#define HVIEW_TITLE			"OpenHpi View"
-#define HVIEW_DOMAIN_COLUMN_TITLE	"\tDomains"
-#define HVIEW_RESOURCE_COLUMN_TITLE	"\tResources"
-#define HVIEW_EVENT_LIST_TITLE		"\tEvents\t"
-#define HVIEW_EVENT_TIME_TITLE		"\tTime \t"
-#define HVIEW_EVENT_SOURCE_TITLE	"\tSource\t"
-#define HVIEW_EVENT_SEVERITY_TITLE	"\tSeverity\t"
-#define HVIEW_EVENT_TYPE_TITLE		"\tType \t"
-#define HVIEW_EVENT_DOMAIN_TITLE	"\tDomain\t"
-
-#define HVIEW_MAIN_WINDOW_WIDTH		700
-#define HVIEW_MAIN_WINDOW_HEIGHT	600
-#define HVIEW_LOG_WINDOW_WIDTH		HVIEW_MAIN_WINDOW_WIDTH
-#define HVIEW_LOG_WINDOW_HEIGHT		150
-#define HVIEW_DETAIL_WINDOW_WIDTH	450
-#define HVIEW_DETAIL_WINDOW_HEIGHT	300
-#define HVIEW_TREE_WINDOW_WIDTH		250
-#define HVIEW_TREE_WINDOW_HEIGHT	HVIEW_DETAIL_WINDOW_HEIGHT
-#define HVIEW_ABOUT_WINDOW_WIDTH	200
-#define HVIEW_ABOUT_WINDOW_HEIGHT	100
 
 #define HVIEW_MAX_TAB_WINDOWS		100
 
@@ -54,11 +29,10 @@ typedef struct HviewEventThrData {
 */
 
 typedef struct HviewTabs {
-      GtkWidget		*tree_view;
+      GtkWidget		*resource_view;
       GtkWidget		*detail_view;
       guint		sessionid;
       gboolean		event_subscribed;
-      guint		event_funcsource;
 } HviewTabsT;
 
 typedef struct HviewWidgets
@@ -85,39 +59,15 @@ typedef struct HviewWidgets
 
       GtkToolItem	*subev_item;
 
-      guint		iter_id;
 } HviewWidgetsT;
 
-enum {
-      HVIEW_BRANCH = 1,
-      HVIEW_ITEM,
-};
-
-typedef struct HviewMenuItemFactory
-{
-      gchar		*label;
-      gchar		*image_file;
-      gpointer		callback;
-      gpointer		data;
-      guint		type;
-} HviewMenuItemFactoryT;
-
-void add_pixmap_directory(const gchar *directory);
-gchar* find_pixmap_file(const gchar *filename);
-GtkWidget *create_pixmap(const gchar *filename);
-
-GtkWidget *hview_get_toggle_bar(HviewWidgetsT *w);
-GtkWidget *hview_get_message_window(HviewWidgetsT *w);
-GtkWidget *hview_get_event_window(HviewWidgetsT *w);
-GtkWidget *hview_get_domain_window(HviewWidgetsT *w);
-GtkWidget *hview_get_detail_window(HviewWidgetsT *w, gint page);
-GtkWidget *hview_get_tree_window(HviewWidgetsT *w, gint page);
-GtkWidget *hview_get_menubar(HviewWidgetsT *w);
-GtkWidget *hview_get_toolbar(HviewWidgetsT *w);
-GtkWidget *hview_get_vtoolbar(HviewWidgetsT *w);
-GtkWidget *hview_get_tree_popup(GtkTreeModel *store,
-				GtkTreeIter *iter,
-				gpointer data);
+typedef struct HviewRptDialogWidgets {
+	HviewWidgetsT	*parent_widgets;
+	GtkWidget	*dialog_window;
+	GtkWidget	*info_box;
+	GtkWidget	*severity_box;
+	GtkWidget	*tag_entry;
+} HviewRptDialogWidgetsT;
 
 void hview_print(HviewWidgetsT *w, const gchar *string);
 void hview_event_print(HviewWidgetsT *w, const gchar *string);
@@ -128,11 +78,6 @@ void hview_tree_cell_func(GtkTreeViewColumn	*col,
 			 GtkTreeModel		*model,
 			 GtkTreeIter		*iter,
 			 gpointer		data);
-void hview_tree_pixbuf_cell_func(GtkTreeViewColumn	*col,
-				 GtkCellRenderer	*renderer,
-				 GtkTreeModel		*model,
-				 GtkTreeIter		*iter,
-				 gpointer		data);
 void hview_detail_cell_func(GtkTreeViewColumn	*col,
 			    GtkCellRenderer	*renderer,
 			    GtkTreeModel	*model,
