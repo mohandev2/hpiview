@@ -1,15 +1,21 @@
 #include <gtk/gtk.h>
 #include "hpiview.h"
 #include "voh.h"
+#include <pthread.h>
+#include <signal.h>
 
 static GtkWidget		*main_window;
 static GtkWidget		*tree_window;
 static GtkWidget		*detail_window;
 static GtkWidget		*log_window;
+static GtkWidget		*statusbar;
+static GtkWidget		*toolbar;
 
 static GtkWidget		*tree_view;
 static GtkWidget		*detail_view;
 static GtkWidget		*log_view;
+
+static pthread_t	prog_thread;
 
 	/* Menu itmes */
 
@@ -19,6 +25,7 @@ static GtkItemFactoryEntry	menu_items[] = {
   {"/_Edit",			NULL,		NULL,		0, "<Branch>"},
   {"/Edit/     _Cleare log",	NULL,		hview_clear_log_call,0, "<Item>"},
   {"/_Action",			NULL,		NULL,		0, "<Branch>"},
+  {"/Action/     _Redescover",	NULL,		hview_redescover_call,0, "<Item>"},
   {"/Action/     _Load plugin",	NULL,		hview_load_plugin_call,0, "<Item>"},
   {"/Action/     _Unload plugin", NULL,		hview_unload_plugin_call,0, "<Item>"},
   {"/_Help",			NULL,		NULL,		0, "<Branch>"},
@@ -44,6 +51,41 @@ static GtkWidget *hview_get_menubar(void)
       gtk_window_add_accel_group(GTK_WINDOW(main_window), accel_group);
 
       return gtk_item_factory_get_widget(item_factory, "<main>");
+}
+
+	/* Create toolbar */
+
+static GtkWidget *hview_get_toolbar(void)
+{
+      GtkWidget		*tbar;
+      GtkWidget		*iconw;
+      GtkIconTheme	*icth;
+      gchar		**path[10];
+      gint		el;
+
+      tbar = gtk_toolbar_new();
+      gtk_toolbar_set_orientation(GTK_TOOLBAR(tbar),
+				  GTK_ORIENTATION_HORIZONTAL);
+      gtk_toolbar_set_style(GTK_TOOLBAR(tbar), GTK_TOOLBAR_BOTH);
+
+      iconw = gtk_image_new_from_file("nothing so far");
+      gtk_toolbar_append_item(GTK_TOOLBAR(tbar),
+			      "Close",
+			      "Close HpiView",
+			      "Private",
+			      iconw,
+			      hview_quit_call,
+			      NULL);
+      iconw = gtk_image_new_from_file("nothing so far");
+      gtk_toolbar_append_item(GTK_TOOLBAR(tbar),
+			      "Descover",
+			      "Descover",
+			      "Private",
+			      iconw,
+			      hview_redescover_call,
+			      NULL);
+
+      return tbar;
 }
 
 	/* Create "tree window" */
@@ -72,6 +114,15 @@ static GtkWidget *hview_get_tree_window(void)
 						  HVIEW_DOMAIN_COLUMN_TITLE,
 						  renderer,
 						  "text", 0, NULL);
+//      col = gtk_tree_view_column_new();
+//      gtk_tree_view_insert_column(GTK_TREE_VIEW(tree_view), col, -1);
+//      col = gtk_tree_view_get_column(GTK_TREE_VIEW(tree_view), 1);
+//      gtk_tree_view_column_set_visible(col, FALSE);
+
+//      col = gtk_tree_view_column_new();
+//      gtk_tree_view_insert_column(GTK_TREE_VIEW(tree_view), col, -1);
+//      col = gtk_tree_view_get_column(GTK_TREE_VIEW(tree_view), 2);
+//      gtk_tree_view_column_set_visible(col, FALSE);
 
       col = gtk_tree_view_get_column(GTK_TREE_VIEW(tree_view), 0);
       gtk_tree_view_column_set_clickable(col, TRUE);
@@ -99,6 +150,8 @@ static GtkWidget *hview_get_tree_window(void)
 static GtkWidget *hview_get_detail_window(void)
 {
       GtkWidget		*window;
+      GtkCellRenderer	*renderer;
+      GtkTreeViewColumn	*col;
 
       window = gtk_scrolled_window_new(NULL, NULL);
       gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(window),
@@ -109,7 +162,25 @@ static GtkWidget *hview_get_detail_window(void)
 				  HVIEW_DETAIL_WINDOW_WIDTH,
 				  HVIEW_DETAIL_WINDOW_HEIGHT);
       detail_view = gtk_tree_view_new();
+      gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(detail_view), FALSE);
 
+      renderer = gtk_cell_renderer_text_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(detail_view),
+						  -1,
+						  NULL,
+						  renderer,
+						  "text", 0, NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(detail_view), 0);
+      gtk_tree_view_column_set_min_width(col, 150);
+      
+
+      renderer = gtk_cell_renderer_text_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(detail_view),
+						  -1,
+						  NULL,
+						  renderer,
+						  "text", 1, NULL);
+      
       gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(window),
 					    detail_view);
       return window;
@@ -144,14 +215,14 @@ static GtkWidget *hview_get_log_window(void)
 
 	/* Initialization all Hpi View widgets */
 
-static int hview_init(void)
+static void hview_init(void)
 {
       GtkWidget		*menubar;
-      GtkWidget		*toolbar;
-      GtkWidget		*statusbar;
       GtkWidget		*vpaned;
       GtkWidget		*hpaned;
       GtkWidget		*main_vbox;
+      GtkTreeModel	*domains;
+      gchar		err[100];
 
 // Create main window ---------------------------------------------------------
       main_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -170,6 +241,9 @@ static int hview_init(void)
 
       menubar = hview_get_menubar();
       gtk_box_pack_start(GTK_BOX(main_vbox), menubar, FALSE, FALSE, 0);
+
+      toolbar = hview_get_toolbar();
+      gtk_box_pack_start(GTK_BOX(main_vbox), toolbar, FALSE, FALSE, 0);
 
       vpaned = gtk_vpaned_new();
       hpaned = gtk_hpaned_new();
@@ -195,24 +269,23 @@ static int hview_init(void)
 
       gtk_box_pack_start(GTK_BOX(main_vbox), vpaned, TRUE, TRUE, 0);
 
+// Create statusbar------------------------------------------------------------
+      statusbar = gtk_statusbar_new();
+      gtk_box_pack_start(GTK_BOX(main_vbox), statusbar, FALSE, FALSE, 0);
+//-----------------------------------------------------------------------------
+
       gtk_widget_show_all(main_window);
 
-      return 0;
 }
 
 int main(int argc, char *argv[])
 {
-      GtkTreeModel	*domains;
-
       gtk_init(&argc, &argv);
+
+      g_thread_init(NULL);
 
       hview_init();
 
-      voh_init();
-
-      domains = voh_list_domains();
-      gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view), domains);
-      g_object_unref(domains);
       gtk_main();
 
       return 0;
@@ -223,6 +296,7 @@ int main(int argc, char *argv[])
 
 static void hview_quit_call(void)
 {
+      voh_fini(NULL);
       gtk_main_quit();
 }
 
@@ -246,6 +320,51 @@ static void hview_load_plugin_call(void)
 static void hview_unload_plugin_call(void)
 {
       hview_print("\"Unload plugin\" is not supported yet");
+}
+
+void *des(void)
+{
+      GtkTreeModel	*domains;
+      gchar		err[100];
+      if (voh_init(err) == -1) {
+	    hview_statusbar_push("discovering failed");
+	    hview_print(err);
+      } else {
+	    domains = voh_list_domains(err);
+	    gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view), domains);
+	    g_object_unref(domains);
+	    hview_statusbar_push("ready");
+      }
+      
+      gtk_widget_set_sensitive(main_window, TRUE);
+}
+
+static void hview_redescover_call(void)
+{
+      GtkTreeModel	*domains;
+      GtkTreeViewColumn	*column;
+      gchar		err[100];
+      GtkWidget		*win;
+
+      column = gtk_tree_view_get_column(GTK_TREE_VIEW(tree_view), 0);
+      gtk_tree_view_column_set_title(column, HVIEW_DOMAIN_COLUMN_TITLE);
+      gtk_window_set_title(GTK_WINDOW(main_window), HVIEW_TITLE);
+      gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view), NULL);
+      gtk_tree_view_set_model(GTK_TREE_VIEW(detail_view), NULL);
+
+      voh_fini(NULL);
+      pthread_create(&prog_thread, NULL, des, NULL);
+      hview_statusbar_push("discovering (please wait)");
+
+      gtk_widget_set_sensitive(main_window, FALSE);
+}
+
+void progress_window(void)
+{
+      GtkWidget		*win;
+
+      win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+      gtk_widget_show(win);
 }
 
 static void hview_about_call(void)
@@ -286,6 +405,7 @@ static void hview_tree_column_activated_call(GtkTreeViewColumn *column)
       GtkTreeModel	*store;
       GtkTreeModel	*newstore;
       GtkTreeIter	iter;
+      gchar		err[100];
 
       state = hview_which_tree_store(column);
       if (state == HVIEW_TREE_STORE_IS_UNKNOWN)
@@ -305,16 +425,18 @@ static void hview_tree_column_activated_call(GtkTreeViewColumn *column)
       if (state == HVIEW_TREE_STORE_IS_DOMAINS) {
 	  gtk_tree_view_column_set_title(column, HVIEW_RESOURCE_COLUMN_TITLE);
 	  gtk_window_set_title(GTK_WINDOW(main_window), name);
-	  newstore = voh_list_resources();
+	  newstore = voh_list_resources(err);
 	  gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view),
 				  GTK_TREE_MODEL(newstore));
       } else {
 	  gtk_tree_view_column_set_title(column, HVIEW_DOMAIN_COLUMN_TITLE);
 	  gtk_window_set_title(GTK_WINDOW(main_window), HVIEW_TITLE);
-	  newstore = voh_list_domains();
+	  newstore = voh_list_domains(err);
 	  gtk_tree_view_set_model(GTK_TREE_VIEW(tree_view),
 				  GTK_TREE_MODEL(newstore));
       }
+      gtk_tree_view_set_model(GTK_TREE_VIEW(detail_view),
+			      NULL);
       g_object_unref(newstore);
       if (name)
 	    g_free(name);
@@ -339,14 +461,27 @@ static void hview_tree_row_activated_call(void)
 
 static void hview_tree_row_selected_call(GtkTreeSelection *selection)
 {
-      gchar		*name = NULL;
+      guint		type,	id;
       GtkTreeModel	*store;
       GtkTreeIter	iter;
+      GtkTreeModel	*details = NULL;
+      gchar		err[100];
 
       if (gtk_tree_selection_get_selected(selection, &store, &iter)) {
-	    gtk_tree_model_get (store, &iter, 0, &name, -1);
-	    printf("DDDD %s\n", name);
-	    g_free(name);
+	    gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_TYPE, &type, -1);
+	    gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+	    if (type == VOH_ITER_IS_DOMAIN) {
+		  details = voh_domain_info(err);
+	    } else if (type == VOH_ITER_IS_RPT) {
+		  details = voh_resource_info(id, err);
+	    } else if (type == VOH_ITER_IS_RDR) {
+		  details = voh_rdr_info(id, err);
+	    }
+
+	    gtk_tree_view_set_model(GTK_TREE_VIEW(detail_view), details);
+	    if (details)
+		  g_object_unref(details);
       }
 }
 
@@ -389,3 +524,9 @@ static void hview_print(const gchar *string)
       gtk_text_view_set_buffer(GTK_TEXT_VIEW(log_view), buf);
 }
 
+static void hview_statusbar_push(const gchar *str)
+{
+      guint	contid;
+
+      gtk_statusbar_push(GTK_STATUSBAR(statusbar), contid, str);
+}
