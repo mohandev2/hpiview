@@ -162,20 +162,91 @@ GtkTreeModel *voh_resource_info(guint id, gchar *err)
       return GTK_TREE_MODEL(info_store);
 }
 
-GtkTreeModel *voh_rdr_info(guint id, gchar *err)
+GtkTreeModel *voh_rdr_info(guint rid, guint type, guint id, gchar *err)
 {
-      GtkTreeStore	*info_store;
-      GtkTreeIter	iter;
-      gchar		ids[10];
+      SaErrorT			rv;
+      SaHpiRdrT			rdr;
+      SaHpiEntryIdT		nextentryid;
+      SaHpiSensorRecT		*sensor;
+      GtkTreeStore		*info_store;
+      GtkTreeIter		iter;
+      gchar			ids[100];
+      gchar			name[1024];
+
+      rv = saHpiRdrGet(sessionid, rid, id, &nextentryid, &rdr);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Rdr info getting failed", rv);
+	    return NULL;
+      }
 
       info_store = gtk_tree_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
 
       gtk_tree_store_append(info_store, &iter, NULL);
-      sprintf(ids, "%d", id);
+      sprintf(ids, "%d", rdr.RecordId);
       gtk_tree_store_set(info_store, &iter,
-			 0, "RdrID",
+			 0, "Rdr Id",
 			 1, ids,
 			 -1);
+
+      gtk_tree_store_append(info_store, &iter, NULL);
+      gtk_tree_store_set(info_store, &iter,
+			 0, "Type",
+			 1, vohRdrType2String(type),
+			 -1);
+
+      gtk_tree_store_append(info_store, &iter, NULL);
+      vohFullEntityPath2String(&(rdr.Entity), name);
+      gtk_tree_store_set(info_store, &iter,
+			 0, "Entity path",
+			 1, name,
+			 -1);
+
+      switch (rdr.RdrType) {
+	case SAHPI_SENSOR_RDR:
+	    sensor = &(rdr.RdrTypeUnion.SensorRec);
+
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    sprintf(ids, "%d", sensor->Num);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "Sensor Id",
+			       1, ids,
+			       -1);
+
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+				  0, "Sensor type",
+				  1, vohSensorType2String(sensor->Type),
+				  -1);
+
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "Event category",
+			       1, vohEventCategory2String(sensor->Category),
+			       -1);
+
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "Sensor control",
+			       1, vohBoolean2String(sensor->EnableCtrl),
+			       -1);
+
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "Sensor event control",
+			       1, vohSensorEventCtrl2String(sensor->EventCtrl),
+			       -1);
+
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "Event states supported",
+			       1, vohEventState2String(sensor->Events,
+						       sensor->Category),
+			       -1);
+
+	    break;
+	default:
+	    break;
+      }
 
       return GTK_TREE_MODEL(info_store);
 }
@@ -212,7 +283,7 @@ int voh_list_rdrs(GtkTreeStore *pstore, SaHpiResourceIdT rid, gchar *err)
       SaHpiEntryIdT		nextentryid;
 
       entryid = SAHPI_FIRST_ENTRY;
-      while (entryid !=SAHPI_LAST_ENTRY) {
+      while (entryid != SAHPI_LAST_ENTRY) {
 	    ret = saHpiRdrGet(sessionid, rid, entryid, &nextentryid, &rdr);
 	    if (ret != SA_OK)
 		  return(-1);
@@ -290,7 +361,6 @@ void voh_add_rdr(GtkTreeStore *pstore,
       SaHpiTextBufferT	strptr;
       gchar		name[100];
 
-
       if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(pstore), &parent)
 	  							== FALSE)
 	    return;
@@ -303,7 +373,7 @@ void voh_add_rdr(GtkTreeStore *pstore,
 	    gtk_tree_store_append(pstore, &iter, &parent);
 	    gtk_tree_store_set(pstore, &iter,
 			       VOH_LIST_COLUMN_NAME, name,
-			       VOH_LIST_COLUMN_ID, (guint)rdr->RecordId,
+			       VOH_LIST_COLUMN_ID, rdr->RecordId,
 			       VOH_LIST_COLUMN_TYPE, VOH_ITER_IS_RDR,
 			       -1);
       }

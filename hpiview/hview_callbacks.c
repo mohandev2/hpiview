@@ -203,9 +203,9 @@ void hview_tree_row_selected_call(GtkTreeSelection *selection,
 					 gpointer data)
 {
       HviewWidgetsT	*w = (HviewWidgetsT *) data;
-      guint		type,	id;
+      guint		type,	id,	pid;
       GtkTreeModel	*store;
-      GtkTreeIter	iter;
+      GtkTreeIter	iter,	parent;
       GtkTreeModel	*details = NULL;
       gchar		err[100];
 
@@ -213,14 +213,21 @@ void hview_tree_row_selected_call(GtkTreeSelection *selection,
 	    gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_TYPE, &type, -1);
 	    gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_ID, &id, -1);
 
-	    if (type == VOH_ITER_IS_DOMAIN) {
+	    switch (type) {
+	      case VOH_ITER_IS_DOMAIN:
 		  details = voh_domain_info(err);
-	    } else if (type == VOH_ITER_IS_RPT) {
+		  break;
+	      case VOH_ITER_IS_RPT:
 		  details = voh_resource_info(id, err);
-	    } else if (type == VOH_ITER_IS_RDR) {
-		  details = voh_rdr_info(id, err);
+		  break;
+	      case VOH_ITER_IS_RDR:
+		  if (!gtk_tree_model_iter_parent(store, &parent, &iter))
+			break;
+		  gtk_tree_model_get(store, &parent, VOH_LIST_COLUMN_ID,
+				     &pid, -1);
+		  details = voh_rdr_info(pid, type, id, err);
+		  break;
 	    }
-
 	    gtk_tree_view_set_model(GTK_TREE_VIEW(w->detail_view), details);
 	    if (details)
 		  g_object_unref(details);
