@@ -65,8 +65,8 @@ GtkTreeModel *voh_list_domains(gchar *err)
       GtkTreeStore	*pstore;
       GtkTreeIter	iter,	child;
 
-      pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, GDK_TYPE_PIXBUF,
-				  G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT,
+      pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
+				  GDK_TYPE_PIXBUF, G_TYPE_UINT, G_TYPE_UINT,
 				  G_TYPE_UINT);
       gtk_tree_store_append(pstore, &iter, NULL);
 
@@ -180,6 +180,10 @@ GtkTreeModel *voh_resource_info(guint id, gchar *err)
 		  gtk_tree_store_set(info_store, &iter,
 			       1, vohResetAction2String(reset),
 			       -1);
+	    } else {
+		  gtk_tree_store_set(info_store, &iter,
+			       1, "unknown",
+			       -1);
 	    }
       }
 
@@ -192,6 +196,7 @@ GtkTreeModel *voh_rdr_info(guint rid, guint id, gchar *err)
       SaHpiRdrT			rdr;
       SaHpiEntryIdT		nextentryid;
       SaHpiSensorRecT		*sensor;
+      SaHpiSensorThresholdsT	thresholds;
       GtkTreeStore		*info_store;
       GtkTreeIter		iter,		child;
       gchar			ids[100];
@@ -352,11 +357,115 @@ GtkTreeModel *voh_rdr_info(guint rid, guint id, gchar *err)
 			       -1);
 
 	    if (sensor->ThresholdDefn.IsAccessible == TRUE) {
-		  gtk_tree_store_append(info_store, &iter, NULL);
-		  gtk_tree_store_set(info_store, &iter,
-				     0, "Thresholds",
-				     -1);
+		rv = saHpiSensorThresholdsGet(sessionid, rid, sensor->Num,
+					      &thresholds);
+		if (rv != SA_OK) {
+		      VOH_ERROR(err, "Thresholds getting failed", rv);
+		} else {
 
+		      gtk_tree_store_append(info_store, &iter, NULL);
+		      gtk_tree_store_set(info_store, &iter,
+					 0, "Thresholds",
+					 -1);
+
+		      sprintf(name, "Low Minor %s",
+			      vohReadWriteThds2String(
+					sensor->ThresholdDefn.ReadThold,
+					sensor->ThresholdDefn.WriteThold,
+					SAHPI_STM_LOW_MINOR));
+		      gtk_tree_store_append(info_store, &child, &iter);
+		      gtk_tree_store_set(info_store, &child,
+					 0, name,
+					 1, vohSensorValue2FullString(
+					     sensor, &thresholds.LowMinor),
+					 -1);
+
+		      sprintf(name, "Up Minor %s",
+			      vohReadWriteThds2String(
+					sensor->ThresholdDefn.ReadThold,
+					sensor->ThresholdDefn.WriteThold,
+					SAHPI_STM_UP_MINOR));
+		      gtk_tree_store_append(info_store, &child, &iter);
+		      gtk_tree_store_set(info_store, &child,
+					 0, name,
+					 1, vohSensorValue2FullString(sensor,
+					     &thresholds.UpMinor),
+					 -1);
+
+		      sprintf(name, "Low Major %s",
+			      vohReadWriteThds2String(
+					sensor->ThresholdDefn.ReadThold,
+					sensor->ThresholdDefn.WriteThold,
+					SAHPI_STM_LOW_MAJOR));
+		      gtk_tree_store_append(info_store, &child, &iter);
+		      gtk_tree_store_set(info_store, &child,
+					 0, name,
+					 1, vohSensorValue2FullString(sensor,
+					     &thresholds.LowMajor),
+					 -1);
+
+		      sprintf(name, "Up Major %s",
+			      vohReadWriteThds2String(
+					sensor->ThresholdDefn.ReadThold,
+					sensor->ThresholdDefn.WriteThold,
+					SAHPI_STM_UP_MAJOR));
+		      gtk_tree_store_append(info_store, &child, &iter);
+		      gtk_tree_store_set(info_store, &child,
+					 0, name,
+					 1, vohSensorValue2FullString(sensor,
+					     &thresholds.UpMajor),
+					 -1);
+
+		      sprintf(name, "Low Critical %s",
+			      vohReadWriteThds2String(
+					sensor->ThresholdDefn.ReadThold,
+					sensor->ThresholdDefn.WriteThold,
+					SAHPI_STM_LOW_CRIT));
+		      gtk_tree_store_append(info_store, &child, &iter);
+		      gtk_tree_store_set(info_store, &child,
+					 0, name,
+					 1, vohSensorValue2FullString(sensor,
+					     &thresholds.LowCritical),
+					 -1);
+
+		      sprintf(name, "Up Critical %s",
+			      vohReadWriteThds2String(
+					sensor->ThresholdDefn.ReadThold,
+					sensor->ThresholdDefn.WriteThold,
+					SAHPI_STM_UP_CRIT));
+		      gtk_tree_store_append(info_store, &child, &iter);
+		      gtk_tree_store_set(info_store, &child,
+					 0, name,
+					 1, vohSensorValue2FullString(sensor,
+					     &thresholds.UpCritical),
+					 -1);
+
+		      sprintf(name, "Low Hysteresis %s",
+			      vohReadWriteThds2String(
+					sensor->ThresholdDefn.ReadThold,
+					sensor->ThresholdDefn.WriteThold,
+					SAHPI_STM_LOW_HYSTERESIS));
+		      gtk_tree_store_append(info_store, &child, &iter);
+		      gtk_tree_store_set(info_store, &child,
+					 0, name,
+					 1, vohSensorValue2FullString(sensor,
+					     &thresholds.NegThdHysteresis),
+					 -1);
+
+		      sprintf(name, "Up Hysteresis %s",
+			      vohReadWriteThds2String(
+					sensor->ThresholdDefn.ReadThold,
+					sensor->ThresholdDefn.WriteThold,
+					SAHPI_STM_UP_HYSTERESIS));
+		      gtk_tree_store_append(info_store, &child, &iter);
+		      gtk_tree_store_set(info_store, &child,
+					 0, name,
+					 1, vohSensorValue2FullString(sensor,
+					     &thresholds.PosThdHysteresis),
+					 -1);
+		}
+
+/*
 		  gtk_tree_store_append(info_store, &child, &iter);
 		  gtk_tree_store_set(info_store, &child,
 				     0, "Readable thresholds",
@@ -369,13 +478,15 @@ GtkTreeModel *voh_rdr_info(guint rid, guint id, gchar *err)
 				     0, "Writable thresholds",
 				     1, vohSensorThdMask2String(
 				            sensor->ThresholdDefn.WriteThold),
-				     -1);
+				     -1);*/
 	    }
 
 	    break;
 	default:
 	    break;
       }
+
+      gtk_tree_store_append(info_store, &iter, NULL);
 
       return GTK_TREE_MODEL(info_store);
 }
@@ -452,8 +563,8 @@ GtkTreeModel *voh_list_resources(gchar *err)
       SaErrorT		ret;
       SaHpiRptEntryT	rptentry;
 
-      pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, GDK_TYPE_PIXBUF,
-				  G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT,
+      pstore = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
+				  GDK_TYPE_PIXBUF, G_TYPE_UINT, G_TYPE_UINT,
 				  G_TYPE_UINT);
 
       rptentryid = SAHPI_FIRST_ENTRY;
@@ -492,6 +603,7 @@ void voh_add_resource(GtkTreeStore *pstore,
 {
       SaErrorT		rv;
       SaHpiPowerStateT	power;
+      SaHpiResetActionT	reset;
       GtkTreeIter	iter,	parent,	*found_iter;
       gint		i;
       guint		id,	type;
@@ -554,6 +666,22 @@ void voh_add_resource(GtkTreeStore *pstore,
 			      break;
 			}
 		  }
+	    }
+
+	    if (rpt->ResourceCapabilities & SAHPI_CAPABILITY_RESET) {
+		  rv = saHpiResourceResetStateGet(sessionid,
+					(SaHpiResourceIdT)id, &reset);
+		  if (rv == SA_OK) {
+			switch (reset) {
+			  case SAHPI_RESET_ASSERT:
+			      state |= VOH_ITER_RPT_STATE_RESET_ASSERT;
+			      break;
+			  case SAHPI_RESET_DEASSERT:
+			      state |= VOH_ITER_RPT_STATE_RESET_DEASSERT;
+			      break;
+			}
+		  } else
+			state |= VOH_ITER_RPT_STATE_RESET_DEASSERT;
 	    }
 	    gtk_tree_store_set(pstore, &iter,
 			       VOH_LIST_COLUMN_NAME, path,
@@ -952,3 +1080,196 @@ gboolean voh_set_power_cycle(guint id, GtkTreeStore *store, gchar *err)
 			 -1);
       return TRUE;
 }
+
+gboolean voh_set_reset_cold(guint id, GtkTreeStore *store, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiResetActionT	reset;
+      GtkTreeIter	iter;
+      guint		state;
+      gboolean		res;
+
+      if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter)
+	  							== FALSE) {
+	    VOH_ERROR(err, "", -1);
+	    return FALSE;
+      }
+      res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
+			    id, &iter);
+      if (res == FALSE) {
+	    VOH_ERROR(err, "Reset state setting failed (invalid resource id)",
+		      -1);
+	    return FALSE;
+      }
+      rv = saHpiResourceResetStateSet(sessionid, (SaHpiResourceIdT)id,
+				      SAHPI_COLD_RESET);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Reset state setting failed", rv);
+	    return FALSE;
+      }
+
+
+      rv = saHpiResourceResetStateGet(sessionid, (SaHpiResourceIdT)id, &reset);
+      if (rv != SA_OK) {
+	    return TRUE;
+      }
+      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+			 VOH_LIST_COLUMN_STATE, &state,
+			 -1);
+      if (reset == SAHPI_RESET_ASSERT) {
+	    state &=~VOH_ITER_RPT_STATE_RESET_DEASSERT;
+	    state |= VOH_ITER_RPT_STATE_RESET_ASSERT;
+      } else if (reset == SAHPI_RESET_DEASSERT) {
+	    state &=~VOH_ITER_RPT_STATE_RESET_ASSERT;
+	    state |= VOH_ITER_RPT_STATE_RESET_DEASSERT;
+      }
+      gtk_tree_store_set(store, &iter,
+			 VOH_LIST_COLUMN_STATE, state,
+			 -1);
+      return TRUE;
+}
+
+gboolean voh_set_reset_warm(guint id, GtkTreeStore *store, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiResetActionT	reset;
+      GtkTreeIter	iter;
+      guint		state;
+      gboolean		res;
+
+      if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter)
+	  							== FALSE) {
+	    VOH_ERROR(err, "", -1);
+	    return FALSE;
+      }
+      res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
+			    id, &iter);
+      if (res == FALSE) {
+	    VOH_ERROR(err, "Reset state setting failed (invalid resource id)",
+		      -1);
+	    return FALSE;
+      }
+      rv = saHpiResourceResetStateSet(sessionid, (SaHpiResourceIdT)id,
+				      SAHPI_WARM_RESET);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Reset state setting failed", rv);
+	    return FALSE;
+      }
+
+
+      rv = saHpiResourceResetStateGet(sessionid, (SaHpiResourceIdT)id, &reset);
+      if (rv != SA_OK) {
+	    return TRUE;
+      }
+      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+			 VOH_LIST_COLUMN_STATE, &state,
+			 -1);
+      if (reset == SAHPI_RESET_ASSERT) {
+	    state &=~VOH_ITER_RPT_STATE_RESET_DEASSERT;
+	    state |= VOH_ITER_RPT_STATE_RESET_ASSERT;
+      } else if (reset == SAHPI_RESET_DEASSERT) {
+	    state &=~VOH_ITER_RPT_STATE_RESET_ASSERT;
+	    state |= VOH_ITER_RPT_STATE_RESET_DEASSERT;
+      }
+      gtk_tree_store_set(store, &iter,
+			 VOH_LIST_COLUMN_STATE, state,
+			 -1);
+      return TRUE;
+}
+
+gboolean voh_set_reset_assert(guint id, GtkTreeStore *store, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiResetActionT	reset;
+      GtkTreeIter	iter;
+      guint		state;
+      gboolean		res;
+
+      if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter)
+	  							== FALSE) {
+	    VOH_ERROR(err, "", -1);
+	    return FALSE;
+      }
+      res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
+			    id, &iter);
+      if (res == FALSE) {
+	    VOH_ERROR(err, "Reset state setting failed (invalid resource id)",
+		      -1);
+	    return FALSE;
+      }
+      rv = saHpiResourceResetStateSet(sessionid, (SaHpiResourceIdT)id,
+				      SAHPI_RESET_ASSERT);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Reset state setting failed", rv);
+	    return FALSE;
+      }
+
+
+      rv = saHpiResourceResetStateGet(sessionid, (SaHpiResourceIdT)id, &reset);
+      if (rv != SA_OK) {
+	    return TRUE;
+      }
+      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+			 VOH_LIST_COLUMN_STATE, &state,
+			 -1);
+      if (reset == SAHPI_RESET_ASSERT) {
+	    state &=~VOH_ITER_RPT_STATE_RESET_DEASSERT;
+	    state |= VOH_ITER_RPT_STATE_RESET_ASSERT;
+      } else if (reset == SAHPI_RESET_DEASSERT) {
+	    state &=~VOH_ITER_RPT_STATE_RESET_ASSERT;
+	    state |= VOH_ITER_RPT_STATE_RESET_DEASSERT;
+      }
+      gtk_tree_store_set(store, &iter,
+			 VOH_LIST_COLUMN_STATE, state,
+			 -1);
+      return TRUE;
+}
+
+gboolean voh_set_reset_deassert(guint id, GtkTreeStore *store, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiResetActionT	reset;
+      GtkTreeIter	iter;
+      guint		state;
+      gboolean		res;
+
+      if (gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter)
+	  							== FALSE) {
+	    VOH_ERROR(err, "", -1);
+	    return FALSE;
+      }
+      res = find_iter_by_id(GTK_TREE_MODEL(store), VOH_LIST_COLUMN_ID,
+			    id, &iter);
+      if (res == FALSE) {
+	    VOH_ERROR(err, "Reset state setting failed (invalid resource id)",
+		      -1);
+	    return FALSE;
+      }
+      rv = saHpiResourceResetStateSet(sessionid, (SaHpiResourceIdT)id,
+				      SAHPI_RESET_DEASSERT);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Reset state setting failed", rv);
+	    return FALSE;
+      }
+
+
+      rv = saHpiResourceResetStateGet(sessionid, (SaHpiResourceIdT)id, &reset);
+      if (rv != SA_OK) {
+	    return TRUE;
+      }
+      gtk_tree_model_get(GTK_TREE_MODEL(store), &iter,
+			 VOH_LIST_COLUMN_STATE, &state,
+			 -1);
+      if (reset == SAHPI_RESET_ASSERT) {
+	    state &=~VOH_ITER_RPT_STATE_RESET_DEASSERT;
+	    state |= VOH_ITER_RPT_STATE_RESET_ASSERT;
+      } else if (reset == SAHPI_RESET_DEASSERT) {
+	    state &=~VOH_ITER_RPT_STATE_RESET_ASSERT;
+	    state |= VOH_ITER_RPT_STATE_RESET_DEASSERT;
+      }
+      gtk_tree_store_set(store, &iter,
+			 VOH_LIST_COLUMN_STATE, state,
+			 -1);
+      return TRUE;
+}
+

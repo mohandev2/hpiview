@@ -245,6 +245,18 @@ GtkWidget *hview_get_domain_window(HviewWidgetsT *w)
 
       w->domain_view = gtk_tree_view_new();
 
+      renderer = gtk_cell_renderer_text_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->domain_view),
+						  VOH_LIST_COLUMN_NAME,
+						  HVIEW_DOMAIN_COLUMN_TITLE,
+						  renderer,
+						  "text",
+						  VOH_LIST_COLUMN_NAME, NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->domain_view),
+				     VOH_LIST_COLUMN_NAME);
+      gtk_tree_view_column_set_cell_data_func(col, renderer,
+					      hview_tree_cell_func, NULL, NULL);
+
       renderer = gtk_cell_renderer_pixbuf_new();
       gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->domain_view),
 						  VOH_LIST_COLUMN_ICON,
@@ -257,21 +269,9 @@ GtkWidget *hview_get_domain_window(HviewWidgetsT *w)
       gtk_tree_view_column_set_cell_data_func(col, renderer,
 					      hview_tree_pixbuf_cell_func,
 					      NULL, NULL);
-      
-      renderer = gtk_cell_renderer_text_new();
-      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(w->domain_view),
-						  VOH_LIST_COLUMN_NAME,
-						  NULL,
-						  renderer,
-						  "text",
-						  VOH_LIST_COLUMN_NAME, NULL);
-      col = gtk_tree_view_get_column(GTK_TREE_VIEW(w->domain_view),
-				     VOH_LIST_COLUMN_NAME);
-      gtk_tree_view_column_set_cell_data_func(col, renderer,
-					      hview_tree_cell_func, NULL, NULL);
 
-      gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(w->domain_view),
-					FALSE);
+//      gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(w->domain_view),
+//					FALSE);
 
       domainstore = voh_list_domains(err);
       if (domainstore == NULL) {
@@ -318,6 +318,17 @@ GtkWidget *hview_get_tree_window(HviewWidgetsT *w, gint page)
 
       w->tab_views[page].tree_view = view = gtk_tree_view_new();
 
+      renderer = gtk_cell_renderer_text_new();
+      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(view),
+						  VOH_LIST_COLUMN_NAME,
+						  HVIEW_RESOURCE_COLUMN_TITLE,
+						  renderer,
+						  "text",
+						  VOH_LIST_COLUMN_NAME, NULL);
+      col = gtk_tree_view_get_column(GTK_TREE_VIEW(view), VOH_LIST_COLUMN_NAME);
+      gtk_tree_view_column_set_cell_data_func(col, renderer,
+					      hview_tree_cell_func, NULL, NULL);
+
       renderer = gtk_cell_renderer_pixbuf_new();
       gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(view),
 						  VOH_LIST_COLUMN_ICON,
@@ -330,17 +341,6 @@ GtkWidget *hview_get_tree_window(HviewWidgetsT *w, gint page)
       gtk_tree_view_column_set_cell_data_func(col, renderer,
 					      hview_tree_pixbuf_cell_func,
 					      NULL, NULL);
-
-      renderer = gtk_cell_renderer_text_new();
-      gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(view),
-						  VOH_LIST_COLUMN_NAME,
-						  NULL,
-						  renderer,
-						  "text",
-						  VOH_LIST_COLUMN_NAME, NULL);
-      col = gtk_tree_view_get_column(GTK_TREE_VIEW(view), VOH_LIST_COLUMN_NAME);
-      gtk_tree_view_column_set_cell_data_func(col, renderer,
-					      hview_tree_cell_func, NULL, NULL);
 
       gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(view),
 					FALSE);
@@ -393,9 +393,6 @@ GtkWidget *hview_get_detail_window(HviewWidgetsT *w, gint page)
       gtk_tree_view_column_set_cell_data_func(col, renderer,
 					      hview_detail_cell_func,
 					      NULL, NULL);
-
-      gtk_tree_view_column_set_min_width(col, 150);
-      
 
       renderer = gtk_cell_renderer_text_new();
       gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(view),
@@ -497,11 +494,7 @@ GtkWidget *hview_get_tree_popup(GtkTreeModel *store,
 				state & VOH_ITER_RPT_STATE_POWER_OFF) {
 		  smenu = gtk_menu_new();
 		  item = gtk_image_menu_item_new_with_mnemonic("power");
-		  if (state & VOH_ITER_RPT_STATE_POWER_ON) {
-			image = create_pixmap("on.png");
-		  } else {
-			image = create_pixmap("off.png");
-		  }
+			image = create_pixmap("power.png");
 
       		  gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(item),
 						image);
@@ -529,6 +522,48 @@ GtkWidget *hview_get_tree_popup(GtkTreeModel *store,
 		  sitem = gtk_menu_item_new_with_mnemonic("off/on");
 		  g_signal_connect(G_OBJECT(sitem), "activate",
 					 G_CALLBACK(hview_set_power_cycle_call),
+					 data);
+		  gtk_container_add(GTK_CONTAINER(smenu), sitem);
+	    }
+
+	    if (state & VOH_ITER_RPT_STATE_RESET_ASSERT ||
+				state & VOH_ITER_RPT_STATE_RESET_DEASSERT) {
+		  smenu = gtk_menu_new();
+		  item = gtk_image_menu_item_new_with_mnemonic("reset");
+			image = create_pixmap("reset.png");
+
+      		  gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(item),
+						image);
+		  gtk_container_add(GTK_CONTAINER(menu), item);
+		  gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), smenu);
+
+		  sitem = gtk_image_menu_item_new_with_mnemonic("cold");
+		  g_signal_connect(G_OBJECT(sitem), "activate",
+					 G_CALLBACK(hview_set_reset_cold_call),
+					 data);
+		  image = create_pixmap("cold_reset.png");
+		  gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(sitem),
+						image);
+		  gtk_container_add(GTK_CONTAINER(smenu), sitem);
+
+		  sitem = gtk_image_menu_item_new_with_mnemonic("warm");
+		  g_signal_connect(G_OBJECT(sitem), "activate",
+					 G_CALLBACK(hview_set_reset_warm_call),
+					 data);
+		  image = create_pixmap("warm_reset.png");
+		  gtk_image_menu_item_set_image(GTK_IMAGE_MENU_ITEM(sitem),
+						image);
+		  gtk_container_add(GTK_CONTAINER(smenu), sitem);
+
+		  sitem = gtk_menu_item_new_with_mnemonic("assert");
+		  g_signal_connect(G_OBJECT(sitem), "activate",
+					 G_CALLBACK(hview_reset_assert_call),
+					 data);
+		  gtk_container_add(GTK_CONTAINER(smenu), sitem);
+
+		  sitem = gtk_menu_item_new_with_mnemonic("deassert");
+		  g_signal_connect(G_OBJECT(sitem), "activate",
+					 G_CALLBACK(hview_reset_deassert_call),
 					 data);
 		  gtk_container_add(GTK_CONTAINER(smenu), sitem);
 	    }

@@ -172,31 +172,32 @@ void hview_domain_row_activated_call(GtkWidget *widget,
 
 }
 
-void hview_tree_row_selected_call(GtkTreeSelection *selection,
-					 gpointer data)
+gint hview_entity_get_info_thread(gpointer data)
 {
       HviewWidgetsT	*w = (HviewWidgetsT *) data;
       guint		type,	id,	pid;
       GtkTreeModel	*store;
       GtkTreeIter	iter,	parent;
       GtkTreeModel	*details = NULL;
-      GtkWidget		*dview;
+      GtkWidget		*dview,	*tview;
+      GtkTreeSelection *selection;
       gint		page;
       gchar		err[100];
+
+      err[0] = 0;
 
       page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
       if (page < 0)
 	    return;
-      if (w->tab_views[page].tree_view == NULL ||
-	  w->tab_views[page].detail_view == NULL)
+      if ((tview = w->tab_views[page].tree_view) == NULL ||
+	  (dview = w->tab_views[page].detail_view) == NULL)
 	    return;
-      dview = w->tab_views[page].detail_view;
 
-      gtk_widget_set_state(GTK_WIDGET(w->rsitem), GTK_STATE_INSENSITIVE);
+      selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
 
       if (gtk_tree_selection_get_selected(selection, &store, &iter)) {
-	    gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_TYPE, &type, -1);
-	    gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+	    gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_TYPE, &type,
+			       VOH_LIST_COLUMN_ID, &id, -1);
 
 	    switch (type) {
 	      case VOH_ITER_IS_DOMAIN:
@@ -215,6 +216,8 @@ void hview_tree_row_selected_call(GtkTreeSelection *selection,
 		  gtk_tree_model_get(store, &parent, VOH_LIST_COLUMN_ID,
 				     &pid, -1);
 		  details = voh_rdr_info(pid, id, err);
+		  if (details == NULL || strlen(err) > 0)
+			hview_print(w, err);
 
 		  if (type == VOH_ITER_IS_SENSOR)
 			gtk_widget_set_sensitive(GTK_WIDGET(w->rsitem), TRUE);
@@ -225,6 +228,22 @@ void hview_tree_row_selected_call(GtkTreeSelection *selection,
 	    if (details)
 		  g_object_unref(details);
       }
+
+//      gtk_widget_set_sensitive(w->main_window, TRUE);
+      hview_statusbar_push(w, "ready");
+
+      return FALSE;
+}
+
+void hview_tree_row_selected_call(GtkTreeSelection *selection,
+				  gpointer data)
+{
+      HviewWidgetsT	*w = (HviewWidgetsT *) data;
+
+      hview_statusbar_push(w, "entry info getting (please wait)");
+//      gtk_widget_set_state(GTK_WIDGET(w->main_window), GTK_STATE_INSENSITIVE);
+      gtk_timeout_add(100, hview_entity_get_info_thread, data);
+      
 }
 
 gboolean hview_button_prees_treeview_call(GtkWidget *widget,
@@ -477,7 +496,7 @@ void hview_set_power_on_call(GtkWidget *widget, gpointer data)
       tview = w->tab_views[page].tree_view;
 
       model = gtk_tree_view_get_model(GTK_TREE_VIEW(tview));
-      voh_set_power_on(w->iter_id, GTK_TREE_STORE(model), err);
+      res = voh_set_power_on(w->iter_id, GTK_TREE_STORE(model), err);
       if (res == FALSE) {
 	    hview_print(w, err);
       }
@@ -501,8 +520,105 @@ void hview_set_power_cycle_call(GtkWidget *widget, gpointer data)
       tview = w->tab_views[page].tree_view;
 
       model = gtk_tree_view_get_model(GTK_TREE_VIEW(tview));
-      voh_set_power_cycle(w->iter_id, GTK_TREE_STORE(model), err);
+      res = voh_set_power_cycle(w->iter_id, GTK_TREE_STORE(model), err);
       if (res == FALSE) {
 	    hview_print(w, err);
       }
 }
+
+void hview_set_reset_cold_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT		*w = (HviewWidgetsT *) data;
+      GtkWidget			*tview;
+      GtkTreeModel		*model;
+      gint			page;
+      gboolean			res;
+      gchar			err[100];
+
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return;
+      tview = w->tab_views[page].tree_view;
+
+      model = gtk_tree_view_get_model(GTK_TREE_VIEW(tview));
+      res = voh_set_reset_cold(w->iter_id, GTK_TREE_STORE(model), err);
+      if (res == FALSE) {
+	    hview_print(w, err);
+      }
+}
+
+void hview_set_reset_warm_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT		*w = (HviewWidgetsT *) data;
+      GtkWidget			*tview;
+      GtkTreeModel		*model;
+      gint			page;
+      gboolean			res;
+      gchar			err[100];
+
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return;
+      tview = w->tab_views[page].tree_view;
+
+      model = gtk_tree_view_get_model(GTK_TREE_VIEW(tview));
+      res = voh_set_reset_warm(w->iter_id, GTK_TREE_STORE(model), err);
+      if (res == FALSE) {
+	    hview_print(w, err);
+      }
+}
+
+void hview_reset_assert_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT		*w = (HviewWidgetsT *) data;
+      GtkWidget			*tview;
+      GtkTreeModel		*model;
+      gint			page;
+      gboolean			res;
+      gchar			err[100];
+
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return;
+      tview = w->tab_views[page].tree_view;
+
+      model = gtk_tree_view_get_model(GTK_TREE_VIEW(tview));
+      res = voh_set_reset_assert(w->iter_id, GTK_TREE_STORE(model), err);
+      if (res == FALSE) {
+	    hview_print(w, err);
+      }
+}
+
+void hview_reset_deassert_call(GtkWidget *widget, gpointer data)
+{
+      HviewWidgetsT		*w = (HviewWidgetsT *) data;
+      GtkWidget			*tview;
+      GtkTreeModel		*model;
+      gint			page;
+      gboolean			res;
+      gchar			err[100];
+
+      page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+      if (page < 0)
+	    return;
+      if (w->tab_views[page].tree_view == NULL ||
+	  w->tab_views[page].detail_view == NULL)
+	    return;
+      tview = w->tab_views[page].tree_view;
+
+      model = gtk_tree_view_get_model(GTK_TREE_VIEW(tview));
+      res = voh_set_reset_deassert(w->iter_id, GTK_TREE_STORE(model), err);
+      if (res == FALSE) {
+	    hview_print(w, err);
+      }
+}
+

@@ -39,6 +39,7 @@ void hview_domain_row_activated_call(GtkWidget *widget,
 				     GtkTreeIter *iter,
 				     GtkTreePath *path,
 				     gpointer data);
+gint hview_entity_get_info_thread(gpointer data);
 void hview_tree_row_selected_call(GtkTreeSelection *selection,
 					 gpointer data);
 gint hview_readsensor_thread(gpointer data);
@@ -52,6 +53,10 @@ void hview_switch_page_call(GtkNotebook *notebook,
 void hview_set_power_off_call(GtkWidget *widget, gpointer data);
 void hview_set_power_on_call(GtkWidget *widget, gpointer data);
 void hview_set_power_cycle_call(GtkWidget *widget, gpointer data);
+void hview_set_reset_cold_call(GtkWidget *widget, gpointer data);
+void hview_set_reset_warm_call(GtkWidget *widget, gpointer data);
+void hview_reset_assert_call(GtkWidget *widget, gpointer data);
+void hview_reset_deassert_call(GtkWidget *widget, gpointer data);
 
 #endif
 
