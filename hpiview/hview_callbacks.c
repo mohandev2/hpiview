@@ -365,7 +365,6 @@ void hview_open_session_call(GtkWidget *widget, gpointer data)
 		  gtk_tree_model_get(store, &iter,
 				     VOH_LIST_COLUMN_NAME, &name,
 				     VOH_LIST_COLUMN_ID, &did, -1);
-		  g_object_unref(store);
 	    } else {
 		  return;
 	    }
