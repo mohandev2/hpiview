@@ -97,13 +97,48 @@ typedef struct HviewSenEventMasksWidgets {
 	GList			*deassert_event_mask;
 } HviewSenEventMasksWidgetsT;
 
+typedef struct HviewInvGeneralTab {
+	gint		tab_page_num;
+	GtkWidget	*info_box;
+	GtkWidget	*invfield_box;
+	GtkWidget	*fru_view;
+	GList		*area_list;
+} HviewInvGeneralTabT;
+
+typedef struct HviewInvFieldsTab {
+	gint		tab_page_num;
+	GtkWidget	*areas_view;
+	GtkWidget	*fields_view;
+	GtkWidget	*add_area;
+	GtkWidget	*remove_area;
+	GtkWidget	*add_field;
+	GtkWidget	*remove_field;
+	GtkWidget	*set_field;
+	GtkWidget	*data_label;
+} HviewInvFieldsTabT;
+
 typedef struct HviewInvDialogWidgets {
 	HviewWidgetsT		*parent_widgets;
 	GtkWidget		*dialog_window;
-	GtkWidget		*info_box;
-	GtkWidget		*areas_box;
+	GtkWidget		*notebook;
+	HviewInvGeneralTabT	general_tab;
+	HviewInvFieldsTabT	fields_tab;
 } HviewInvDialogWidgetsT;
 
+typedef struct HviewInvAreaAddWidgets {
+	HviewInvDialogWidgetsT	*parent_widgets;
+	GtkWidget		*dialog_window;
+	GtkWidget		*area_types;
+} HviewInvAreaAddWidgetsT;
+
+typedef struct HviewInvFieldAddWidgets {
+	HviewInvDialogWidgetsT	*parent_widgets;
+	GtkWidget		*dialog_window;
+	GtkWidget		*field_types;
+	GtkWidget		*read_only;
+	GtkTextBuffer		*data_buffer;
+	GtkWidget		*data_view;
+} HviewInvFieldAddWidgetsT;
 
 
 void hview_print(HviewWidgetsT *w, const gchar *string);

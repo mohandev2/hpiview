@@ -15,6 +15,7 @@ hpiview_SOURCES = \
 	hview_widgets.c hview_widgets.h \
 	hview_windows.c hview_windows.h \
 	hview_callbacks.c hview_callbacks.h \
+	voh_types.h voh_types.c \
 	voh.c voh.h \
 	voh_string.c voh_string.h
 

@@ -187,5 +187,45 @@ gboolean voh_get_idr_area_with_field(guint sessionid,
 				      GList **areas,
 				      gchar *err);
 
+void voh_get_idr_area_type(GList **area_types);
+void voh_get_idr_field_type(GList **field_types);
+
+gboolean voh_idr_area_add(guint sessionid,
+			  guint resourceid,
+			  guint rdrentryid,
+			  guint areatype,
+			  guint *areaid,
+			  gchar *err);
+gboolean voh_idr_area_delete(guint sessionid,
+			     guint resourceid,
+			     guint rdrentryid,
+			     guint areaid,
+			     gchar *err);
+gboolean voh_idr_field_add(guint sessionid,
+			   guint resourceid,
+			   guint rdrentryid,
+			   VtDataT *field,
+			   gchar *err);
+gboolean voh_idr_field_delete(guint sessionid,
+			     guint resourceid,
+			     guint rdrentryid,
+			     guint areaid,
+			     guint fieldid,
+			     gchar *err);
+gboolean voh_idr_field_get(guint sessionid,
+			   guint resourceid,
+			   guint rdrentryid,
+			   guint areaid,
+			   guint fieldtype,
+			   guint fieldid,
+			   guint *nextfieldid,
+			   VtDataT *field,
+			   gchar *err);
+gboolean voh_idr_field_set(guint sessionid,
+			   guint resourceid,
+			   guint rdrentryid,
+			   VtDataT *field,
+			   gchar *err);
+
 #endif /* __VOH_H__ */
 

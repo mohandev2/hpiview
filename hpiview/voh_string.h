@@ -41,6 +41,8 @@ const char *vohIdrAreaType2String(SaHpiIdrAreaTypeT type);
 const char *vohIdrFieldType2String(SaHpiIdrFieldTypeT type);
 
 GList *vohEventState2List(SaHpiEventCategoryT category);
+GList *vohIdrAreaType2List(void);
+GList *vohIdrFieldType2List(void);
 GList *vohSensorThdMask2List(void);
 void *vohFillSensorReadingValue(VohObjectT *obj, SaHpiSensorReadingT *sr);
 

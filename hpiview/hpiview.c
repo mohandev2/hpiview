@@ -18,6 +18,7 @@
 
 #include <gtk/gtk.h>
 #include "voh.h"
+#include "voh_types.h"
 #include "hview_service.h"
 #include "hview_windows.h"
 #include "hpiview.h"

@@ -2715,7 +2715,12 @@ gboolean voh_get_idr_area_with_field(guint sessionid,
 		obj = (VohObjectT *) g_malloc(sizeof(VohObjectT));
 		area_list = g_list_append(area_list, obj);
 		obj->name = g_strdup(vohIdrAreaType2String(area_header.Type));
+		obj->numerical = area_header.Type;
 		obj->state = VOH_OBJECT_READABLE;
+		if (area_header.ReadOnly == FALSE) {
+			obj->state |= VOH_OBJECT_WRITABLE;
+		}
+		obj->id = area_header.AreaId;
 		obj->value.type = VOH_OBJECT_TYPE_UINT;
 		obj->data = NULL;
 
@@ -2736,7 +2741,14 @@ gboolean voh_get_idr_area_with_field(guint sessionid,
 			field_list = g_list_append(field_list, fobj);
 			fobj->name = g_strdup(vohIdrFieldType2String(
 								field.Type));
+			fobj->numerical = field.Type;
 			fobj->state = VOH_OBJECT_READABLE;
+			if (field.ReadOnly == FALSE) {
+				fobj->state |= VOH_OBJECT_WRITABLE;
+			} else {
+				obj->state &=~ VOH_OBJECT_WRITABLE;
+			}
+			fobj->id = field.FieldId;
 			fobj->value.type = VOH_OBJECT_TYPE_UINT;
 
 			fixstr(&(field.Field), str);
@@ -2751,6 +2763,298 @@ gboolean voh_get_idr_area_with_field(guint sessionid,
 	}
 
 	*areas = area_list;
+
+	return TRUE;
+}
+
+void voh_get_idr_area_type(GList **area_types)
+{
+	GList		*types;
+
+	*area_types = NULL;
+
+	types = vohIdrAreaType2List();
+
+	*area_types = types;
+}
+
+void voh_get_idr_field_type(GList **field_types)
+{
+	GList		*types;
+
+	*field_types = NULL;
+
+	types = vohIdrFieldType2List();
+
+	*field_types = types;
+}
+
+gboolean voh_idr_area_add(guint sessionid,
+			  guint resourceid,
+			  guint rdrentryid,
+			  guint areatype,
+			  guint *areaid,
+			  gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiInventoryRecT	inventory;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiEntryIdT		aid;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Adding inventory area failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_INVENTORY_RDR) {
+		VOH_ERROR(err, "Adding inventory area failed", -1);
+		return FALSE;
+	}
+
+	inventory = rdr.RdrTypeUnion.InventoryRec;
+
+	rv = saHpiIdrAreaAdd(sid, rid, inventory.IdrId, areatype, &aid);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Adding inventory area failed", rv);
+		return FALSE;
+	}
+
+	if (areaid) {
+		*areaid = aid;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_idr_area_delete(guint sessionid,
+			     guint resourceid,
+			     guint rdrentryid,
+			     guint areaid,
+			     gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiInventoryRecT	inventory;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiEntryIdT		aid = (SaHpiEntryIdT) areaid;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Deleting inventory area failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_INVENTORY_RDR) {
+		VOH_ERROR(err, "Deleting inventory area failed", -1);
+		return FALSE;
+	}
+
+	inventory = rdr.RdrTypeUnion.InventoryRec;
+
+	rv = saHpiIdrAreaDelete(sid, rid, inventory.IdrId, aid);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Deleting inventory area failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_idr_field_add(guint sessionid,
+			   guint resourceid,
+			   guint rdrentryid,
+			   VtDataT *field,
+			   gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiInventoryRecT	inventory;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiIdrFieldT		h_field;
+	gchar			buffer[1024];
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Adding inventory field failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_INVENTORY_RDR) {
+		VOH_ERROR(err, "Adding inventory field failed", -1);
+		return FALSE;
+	}
+
+	inventory = rdr.RdrTypeUnion.InventoryRec;
+
+	vt_data_value_get(field, "area_id", &h_field.AreaId);
+	vt_data_value_get(field, "type", &h_field.Type);
+	vt_data_value_get(field, "read_only", &h_field.ReadOnly);
+	vt_data_value_get(field, "field.data", buffer);
+	fillstr(&(h_field.Field), buffer);
+
+	rv = saHpiIdrFieldAdd(sid, rid, inventory.IdrId, &h_field);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Adding inventory field failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_idr_field_delete(guint sessionid,
+			     guint resourceid,
+			     guint rdrentryid,
+			     guint areaid,
+			     guint fieldid,
+			     gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiInventoryRecT	inventory;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiEntryIdT		aid = (SaHpiEntryIdT) areaid;
+	SaHpiEntryIdT		fid = (SaHpiEntryIdT) fieldid;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Deleting inventory field failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_INVENTORY_RDR) {
+		VOH_ERROR(err, "Deleting inventory field failed", -1);
+		return FALSE;
+	}
+
+	inventory = rdr.RdrTypeUnion.InventoryRec;
+
+	rv = saHpiIdrFieldDelete(sid, rid, inventory.IdrId, aid, fid);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Deleting inventory field failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_idr_field_get(guint sessionid,
+			   guint resourceid,
+			   guint rdrentryid,
+			   guint areaid,
+			   guint fieldtype,
+			   guint fieldid,
+			   guint *nextfieldid,
+			   VtDataT *field,
+			   gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiInventoryRecT	inventory;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiIdrFieldT		h_field;
+	SaHpiEntryIdT		aid = (SaHpiEntryIdT) areaid;
+	SaHpiEntryIdT		fid = (SaHpiEntryIdT) fieldid;
+	SaHpiEntryIdT		nfid;
+	SaHpiIdrFieldTypeT	ftype = (SaHpiIdrFieldTypeT) fieldtype;
+	gchar			dstr[1024];
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting inventory field failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_INVENTORY_RDR) {
+		VOH_ERROR(err, "Getting inventory field failed", -1);
+		return FALSE;
+	}
+
+	inventory = rdr.RdrTypeUnion.InventoryRec;
+
+	rv = saHpiIdrFieldGet(sid, rid, inventory.IdrId, aid, ftype, fid,
+			&nfid, &h_field);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting inventory field failed", rv);
+		return FALSE;
+	}
+
+	if (nextfieldid)
+		*nextfieldid = nfid;
+
+	vt_data_value_set(field, "area_id", &h_field.AreaId);
+	vt_data_value_set(field, "field_id", &h_field.FieldId);
+	vt_data_value_set(field, "type", &h_field.Type);
+	vt_data_value_set(field, "read_only", &h_field.ReadOnly);
+	fixstr(&h_field.Field, dstr);
+	vt_data_value_set(field, "field.data", dstr);
+
+	return TRUE;
+}
+
+gboolean voh_idr_field_set(guint sessionid,
+			   guint resourceid,
+			   guint rdrentryid,
+			   VtDataT *field,
+			   gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiInventoryRecT	inventory;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiIdrFieldT		h_field;
+	gchar			buffer[1024];
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting inventory field failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_INVENTORY_RDR) {
+		VOH_ERROR(err, "Setting inventory field failed", -1);
+		return FALSE;
+	}
+
+	inventory = rdr.RdrTypeUnion.InventoryRec;
+
+	vt_data_value_get(field, "area_id", &h_field.AreaId);
+	vt_data_value_get(field, "field_id", &h_field.FieldId);
+	vt_data_value_get(field, "type", &h_field.Type);
+	vt_data_value_get(field, "read_only", &h_field.ReadOnly);
+	vt_data_value_get(field, "field.data", buffer);
+	fillstr(&(h_field.Field), buffer);
+
+	rv = saHpiIdrFieldSet(sid, rid, inventory.IdrId, &h_field);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting inventory field failed", rv);
+		return FALSE;
+	}
 
 	return TRUE;
 }
