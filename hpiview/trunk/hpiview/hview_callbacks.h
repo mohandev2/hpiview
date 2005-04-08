@@ -18,7 +18,15 @@
 #ifndef __HVIEW_CALLBACKS_H__
 #define __HVIEW_CALLBACKS_H__
 
+typedef struct HviewCallData {
+	guint		sessionid;
+	guint		parentid;
+	guint		entryid;
+	gpointer	data;
+} HviewCallDataT;
+
 void hview_quit_call(GtkWidget *widget, gpointer data);
+gboolean hview_toggled_true_false_call(GtkToggleButton *but, gpointer data);
 void hview_empty_log_call(GtkWidget *widget, gpointer data);
 void hview_load_plugin_call(GtkWidget *widget, gpointer data);
 void hview_unload_plugin_call(GtkWidget *widget, gpointer data);
@@ -77,6 +85,31 @@ void hview_inventory_settings_call(GtkWidget *widget, gpointer data);
 gboolean hview_butpress_invareas_call(GtkWidget *widget,
 				      GdkEventButton *event,
 				      gpointer data);
+
+gboolean hview_invarea_set_call(GtkWidget *widget,
+				GdkEventButton *event,
+				gpointer data);
+gboolean hview_butpress_invdata_view_call(GtkWidget *widget,
+					  GdkEventButton *event,
+					  gpointer data);
+gboolean hview_invarea_selected_call(GtkTreeSelection *selection,
+				     gpointer data);
+gboolean hview_invfield_selected_call(GtkTreeSelection *selection,
+				      gpointer data);
+
+void hview_invarea_add_apply_responce(HviewCallDataT *cdata);
+gboolean hview_invarea_add_call(GtkWidget *button, gpointer data);
+gboolean hview_invarea_remove_call(GtkWidget *button, gpointer data);
+
+gboolean hview_invarea_unsel_call(GtkTreeView *area_view, gpointer data);
+gboolean hview_invfield_unsel_call(GtkTreeView *field_view, gpointer data);
+
+void hview_invfield_add_apply_response(HviewCallDataT *cdata);
+gboolean hview_invfield_add_call(GtkWidget *button, gpointer data);
+gboolean hview_invfield_remove_call(GtkWidget *button, gpointer data);
+
+void hview_invfield_set_apply_response(HviewCallDataT *cdata);
+gboolean hview_invfield_set_call(GtkWidget *widget, gpointer data);
 
 #endif
 

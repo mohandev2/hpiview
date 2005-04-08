@@ -551,12 +551,8 @@ GtkWidget *hview_get_sensor_settings_window(HviewSenDialogWidgetsT *w)
 				    HVIEW_SETTINGS_WINDOW_HEIGHT);
 
 	notebook = gtk_notebook_new();
-//	g_signal_connect(G_OBJECT(notebook), "switch-page",
-//			 NULL, (gpointer)w);
 	gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook), TRUE);
 	gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
-//	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox),
-//			   notebook, TRUE, FALSE, 5);
 	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), notebook);
 
 	vbox = gtk_vbox_new(FALSE, 5);
@@ -675,9 +671,12 @@ GtkWidget *hview_get_inventory_settings_window(HviewInvDialogWidgetsT *w)
 {
 	HviewWidgetsT	*pw = w->parent_widgets;
 	GtkWidget	*dialog;
-	GtkWidget	*vbox,		*hbox;
+	GtkWidget	*notebook;
+	GtkWidget	*vbox,		*vbox1,	*hbox;
 	GtkWidget	*frame;
 	GtkWidget	*label;
+	GtkWidget	*win;
+	GtkCellRenderer	*renderer;
 
 	dialog = gtk_dialog_new_with_buttons("Inventory preferences",
 					     GTK_WINDOW(pw->main_window),
@@ -693,30 +692,259 @@ GtkWidget *hview_get_inventory_settings_window(HviewInvDialogWidgetsT *w)
 				    HVIEW_SETTINGS_WINDOW_WIDTH,
 				    HVIEW_SETTINGS_WINDOW_HEIGHT);
 
+	notebook = w->notebook = gtk_notebook_new();
+	gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
+	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), notebook);
+
 	vbox = gtk_vbox_new(FALSE, 5);
-	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), vbox);
+	label = gtk_label_new("General");
+	w->general_tab.tab_page_num = gtk_notebook_append_page(GTK_NOTEBOOK(
+							notebook), vbox, label);
 	
 	frame = gtk_frame_new("Inventory info");
-	gtk_box_pack_start(GTK_BOX(vbox), frame, FALSE, FALSE, 5);	
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);	
 
-	w->info_box = gtk_vbox_new(FALSE, 5);
-	gtk_container_add(GTK_CONTAINER(frame), w->info_box);
+	w->general_tab.info_box = gtk_vbox_new(FALSE, 5);
+	gtk_container_add(GTK_CONTAINER(frame), w->general_tab.info_box);
 
-	frame = gtk_frame_new("");
-	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 5);
+	hbox = gtk_hbox_new(TRUE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 10);
 
-	hbox = gtk_hbox_new(FALSE, 5);
-	gtk_container_add(GTK_CONTAINER(frame),hbox);
-
-	w->areas_box = gtk_button_new_with_label(" Get/Set ");
+	w->general_tab.fru_view = gtk_button_new_with_label(" View ");
 
 	label = gtk_label_new("Inventory fields");
-	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 10);
-	gtk_box_pack_end(GTK_BOX(hbox), w->areas_box, FALSE, FALSE, 10);
+	gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 10);
+	gtk_box_pack_end(GTK_BOX(hbox), w->general_tab.fru_view,
+			FALSE, FALSE, 10);
+	w->general_tab.invfield_box = hbox;
 
-	g_signal_connect(G_OBJECT(w->areas_box), "button-press-event",
-			G_CALLBACK(hview_butpress_invareas_call),
-			pw);
+	g_signal_connect(G_OBJECT(w->general_tab.fru_view),
+			"button-press-event",
+			G_CALLBACK(hview_butpress_invareas_call), w);
+
+	vbox = gtk_vbox_new(FALSE, 0);
+	label = gtk_label_new("FRU");
+	w->fields_tab.tab_page_num = gtk_notebook_append_page(GTK_NOTEBOOK(
+							notebook), vbox, label);
+
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
+
+	win = gtk_scrolled_window_new(NULL, NULL);
+	gtk_box_pack_start(GTK_BOX(hbox), win, TRUE, TRUE, 0);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(win),
+				       GTK_POLICY_AUTOMATIC,
+				       GTK_POLICY_AUTOMATIC);
+
+	gtk_widget_set_size_request(GTK_WIDGET(win), 120, 250);
+
+	w->fields_tab.areas_view = gtk_tree_view_new();
+
+	renderer = gtk_cell_renderer_text_new();
+	gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(
+						w->fields_tab.areas_view),
+						0, "  Inventory areas",
+						renderer, "text", 0, NULL);
+	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(win),
+					      w->fields_tab.areas_view);
+
+	vbox1 = gtk_vbox_new(FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(hbox), vbox1, TRUE, FALSE, 0);
+
+	w->fields_tab.add_area = gtk_button_new_with_label(" Add area ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->fields_tab.add_area,
+			   FALSE, FALSE, 5);
+
+	w->fields_tab.remove_area = gtk_button_new_with_label(" Remove area ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->fields_tab.remove_area,
+			   FALSE, FALSE, 5);
+
+	gtk_widget_set_sensitive(w->fields_tab.remove_area, FALSE);
+
+	hbox = gtk_hbox_new(FALSE, 5);
+	gtk_box_pack_start(GTK_BOX(vbox1), hbox, TRUE, TRUE, 5);
+	
+	win = gtk_scrolled_window_new(NULL, NULL);
+	gtk_box_pack_start(GTK_BOX(hbox), win, FALSE, FALSE, 5);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(win),
+				       GTK_POLICY_AUTOMATIC,
+				       GTK_POLICY_AUTOMATIC);
+
+	gtk_widget_set_size_request(GTK_WIDGET(win), 130, 50);
+
+	w->fields_tab.fields_view = gtk_tree_view_new();
+
+	renderer = gtk_cell_renderer_text_new();
+	gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(
+						w->fields_tab.fields_view),
+						0, "Inventory fields",
+						renderer, "text", 0, NULL);
+	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(win),
+					      w->fields_tab.fields_view);
+
+	vbox1 = gtk_vbox_new(FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(hbox), vbox1, TRUE, FALSE, 0);
+	w->fields_tab.add_field = gtk_button_new_with_label(" Add ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->fields_tab.add_field,
+			   FALSE, FALSE, 5);
+
+	gtk_widget_set_sensitive(w->fields_tab.add_field, FALSE);
+
+	w->fields_tab.remove_field = gtk_button_new_with_label(" Remove ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->fields_tab.remove_field,
+			   FALSE, FALSE, 5);
+	gtk_widget_set_sensitive(w->fields_tab.remove_field, FALSE);
+
+	w->fields_tab.set_field = gtk_button_new_with_label(" Set ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->fields_tab.set_field,
+			   FALSE, FALSE, 5);
+	gtk_widget_set_sensitive(w->fields_tab.set_field, FALSE);
+
+	frame = gtk_frame_new("FRU data");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+
+	w->fields_tab.data_label = gtk_label_new("");
+	gtk_container_add(GTK_CONTAINER(frame), w->fields_tab.data_label);
+
+	return dialog;
+}
+
+GtkWidget *hview_get_invarea_add_window(HviewInvAreaAddWidgetsT *dw)
+{
+	HviewInvDialogWidgetsT	*pw = dw->parent_widgets;
+	GtkWidget		*dialog;
+	GtkWidget		*frame;
+	GtkListStore		*store;
+	GtkTreeIter		iter;
+	GtkCellRenderer		*renderer;
+	GList			*area_types;
+	VohObjectT		*obj;
+
+	dialog = gtk_dialog_new_with_buttons("New inventory area parameters",
+					     GTK_WINDOW(pw->dialog_window),
+					     GTK_DIALOG_MODAL |
+					        GTK_DIALOG_DESTROY_WITH_PARENT,
+					     GTK_STOCK_APPLY,
+					     GTK_RESPONSE_APPLY,
+					     GTK_STOCK_CANCEL,
+					     GTK_RESPONSE_CANCEL,
+					     NULL);
+
+	frame = gtk_frame_new("Area type");
+	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), frame,
+			   TRUE, FALSE, 5);
+
+	store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_UINT);
+	dw->area_types = gtk_combo_box_new_with_model(GTK_TREE_MODEL(store));
+	gtk_container_add(GTK_CONTAINER(frame), dw->area_types);
+
+	renderer = gtk_cell_renderer_text_new();
+	gtk_cell_layout_pack_start (GTK_CELL_LAYOUT(dw->area_types), renderer,
+				    TRUE);
+	gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT(dw->area_types),
+					renderer, "text", 0, NULL);
+
+
+
+	voh_get_idr_area_type(&area_types);
+
+	while (area_types != NULL) {
+		obj = (VohObjectT *) area_types->data;
+		gtk_list_store_append(store, &iter);
+		gtk_list_store_set(store, &iter,
+				   0, obj->name,
+				   1, obj->numerical,
+				   -1);
+
+		area_types = area_types->next;
+	}
+
+	gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter);
+	gtk_combo_box_set_active_iter(GTK_COMBO_BOX(dw->area_types), &iter);
+
+	return dialog;
+}
+
+GtkWidget *hview_get_invfield_add_window(HviewInvFieldAddWidgetsT *dw)
+{
+	HviewInvDialogWidgetsT	*pw = dw->parent_widgets;
+	GtkWidget		*dialog;
+	GtkWidget		*win;
+	GtkWidget		*frame;
+	GtkListStore		*store;
+	GtkTreeIter		iter;
+	GtkCellRenderer		*renderer;
+	GList			*field_types;
+	VohObjectT		*obj;
+
+	dialog = gtk_dialog_new_with_buttons("New inventory field parameters",
+					     GTK_WINDOW(pw->dialog_window),
+					     GTK_DIALOG_MODAL |
+					        GTK_DIALOG_DESTROY_WITH_PARENT,
+					     GTK_STOCK_APPLY,
+					     GTK_RESPONSE_APPLY,
+					     GTK_STOCK_CANCEL,
+					     GTK_RESPONSE_CANCEL,
+					     NULL);
+
+	frame = gtk_frame_new("Field type parameter");
+	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), frame,
+			   TRUE, FALSE, 5);
+
+	store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_UINT);
+	dw->field_types = gtk_combo_box_new_with_model(GTK_TREE_MODEL(store));
+	gtk_container_add(GTK_CONTAINER(frame), dw->field_types);
+
+	renderer = gtk_cell_renderer_text_new();
+	gtk_cell_layout_pack_start (GTK_CELL_LAYOUT(dw->field_types), renderer,
+				    TRUE);
+	gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT(dw->field_types),
+					renderer, "text", 0, NULL);
+
+	voh_get_idr_field_type(&field_types);
+
+	while (field_types != NULL) {
+		obj = (VohObjectT *) field_types->data;
+		gtk_list_store_append(store, &iter);
+		gtk_list_store_set(store, &iter,
+				   0, obj->name,
+				   1, obj->numerical,
+				   -1);
+
+		field_types = field_types->next;
+	}
+
+	gtk_tree_model_get_iter_first(GTK_TREE_MODEL(store), &iter);
+	gtk_combo_box_set_active_iter(GTK_COMBO_BOX(dw->field_types), &iter);
+
+	frame = gtk_frame_new("Read only parameter");
+	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), frame,
+			   TRUE, FALSE, 5);
+
+	dw->read_only = gtk_check_button_new_with_label("FALSE");
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dw->read_only), FALSE);
+	g_signal_connect(G_OBJECT(dw->read_only), "toggled",
+			G_CALLBACK(hview_toggled_true_false_call),
+			NULL);
+	gtk_container_add(GTK_CONTAINER(frame), dw->read_only);
+
+	frame = gtk_frame_new("FRU data");
+	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), frame,
+			   TRUE, FALSE, 5);
+
+	win = gtk_scrolled_window_new(NULL, NULL);
+	gtk_container_add(GTK_CONTAINER(frame), win);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(win),
+				       GTK_POLICY_AUTOMATIC,
+				       GTK_POLICY_AUTOMATIC);
+
+	dw->data_buffer = gtk_text_buffer_new(NULL);
+	dw->data_view = gtk_text_view_new_with_buffer(dw->data_buffer);
+	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(win),
+					      dw->data_view);
+	g_signal_connect(G_OBJECT(dw->data_view),
+			"button-press-event",
+			G_CALLBACK(hview_butpress_invdata_view_call), pw);
 
 	return dialog;
 }
