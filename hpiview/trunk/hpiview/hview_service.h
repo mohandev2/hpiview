@@ -55,6 +55,28 @@ typedef struct HviewWidgets
 
 } HviewWidgetsT;
 
+typedef struct HviewDomainDatTab {
+	gint		tab_page_num;
+	GtkWidget	*alarms_view;
+	GtkWidget	*add_alarm;
+	GtkWidget	*delete_alarm;
+	GtkWidget	*ack_alarm;
+	GtkWidget	*alarminfo_box;
+} HviewDomainDatTabT;
+
+typedef struct HviewDomainGeneralTab {
+	gint		tab_page_num;
+	GtkWidget	*info_box;
+	GtkWidget	*tag_entry;
+} HviewDomainGeneralTabT;
+
+typedef struct HviewDomainDialogWidgets {
+	HviewWidgetsT		*parent_widgets;
+	GtkWidget		*dialog_window;
+	HviewDomainGeneralTabT	general_tab;
+	HviewDomainDatTabT	dat_tab;
+} HviewDomainDialogWidgetsT;
+
 typedef struct HviewRptDialogWidgets {
 	HviewWidgetsT	*parent_widgets;
 	GtkWidget	*dialog_window;
@@ -139,6 +161,85 @@ typedef struct HviewInvFieldAddWidgets {
 	GtkTextBuffer		*data_buffer;
 	GtkWidget		*data_view;
 } HviewInvFieldAddWidgetsT;
+
+typedef struct HviewConGeneralTab {
+	gint		tab_page_num;
+	GtkWidget	*info_box;
+} HviewConGeneralTabT;
+
+typedef struct HviewConStateTab {
+	gint		tab_page_num;
+	GtkWidget	*state_box;
+	GtkWidget	*state_widget;
+	GtkWidget	*line_widget;
+	GtkWidget	*flag_widget;
+	GtkWidget	*mode_widget;
+} HviewConStateTabT;
+
+typedef struct HviewConDialogWidgets {
+	HviewWidgetsT		*parent_widgets;
+	GtkWidget		*dialog_window;
+	GtkWidget		*notebook;
+	HviewConGeneralTabT	general_tab;
+	HviewConStateTabT	state_tab;
+} HviewConDialogWidgetsT;
+
+typedef struct HviewWatchGeneralTab {
+	gint		tab_page_num;
+	GtkWidget	*info_box;
+	GtkWidget	*log;
+	GtkWidget	*running;
+	GtkWidget	*timer_use;
+	GtkWidget	*timer_action;
+	GtkWidget	*pretimer_inter;
+	GtkWidget	*pretimeout;
+	GtkWidget	*initial_count;
+} HviewWatchGeneralTabT;
+
+typedef struct HviewWatchFlagsTab {
+	gint		tab_page_num;
+	GtkWidget	*flags_box;
+	GList		*flags;
+} HviewWatchFlagsTabT;
+
+typedef struct HviewWatchDialogWidgets {
+	HviewWidgetsT		*parent_widgets;
+	GtkWidget		*dialog_window;
+	HviewWatchGeneralTabT	general_tab;
+	HviewWatchFlagsTabT	flags_tab;
+} HviewWatchDialogWidgetsT;
+
+typedef struct HviewDomainEvLogTSWidgets {
+	HviewWidgetsT		*parent_widgets;
+	GtkWidget		*dialog_window;
+	GtkWidget		*calendar;
+	GtkWidget		*hour;
+	GtkWidget		*min;
+	GtkWidget		*sec;
+	GtkWidget		*time_box;
+} HviewDomainEvLogTSWidgetsT;
+
+typedef struct HviewDomainEvLogGeneralTab {
+	gint		tab_page_num;
+	GtkWidget	*info_box;
+	GtkWidget	*enable_state;
+	GtkWidget	*overflow_reset;
+} HviewDomainEvLogGeneralTabT;
+
+typedef struct HviewDomainEvLogEntriesTab {
+	gint		tab_page_num;
+	GtkWidget	*evlog_view;
+	GtkWidget	*add_evlog;
+	GtkWidget	*delete_evlog;
+	GtkWidget	*entryinfo_box;
+} HviewDomainEvLogEntriesTabT;
+
+typedef struct HviewDomainEvLogWidgets {
+	HviewWidgetsT			*parent_widgets;
+	GtkWidget			*dialog_window;
+	HviewDomainEvLogGeneralTabT	general_tab;
+	HviewDomainEvLogEntriesTabT	evlog_tab;
+} HviewDomainEvLogWidgetsT;
 
 
 void hview_print(HviewWidgetsT *w, const gchar *string);

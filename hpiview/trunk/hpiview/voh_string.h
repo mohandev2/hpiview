@@ -46,5 +46,11 @@ GList *vohIdrFieldType2List(void);
 GList *vohSensorThdMask2List(void);
 void *vohFillSensorReadingValue(VohObjectT *obj, SaHpiSensorReadingT *sr);
 
+const char *vohCtrlType2String(SaHpiCtrlTypeT type);
+const char *vohCtrlOutputType2String(SaHpiCtrlOutputTypeT type);
+const char *vohCtrlMode2String(SaHpiCtrlModeT mode);
+const char *vohCtrlStateDigital2String(SaHpiCtrlStateDigitalT state);
+GList *vohCtrlStateDigital2List(void);
+
 #endif
 

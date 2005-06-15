@@ -51,4 +51,12 @@ GtkWidget *hview_get_invarea_add_window(HviewInvAreaAddWidgetsT *dw);
 
 GtkWidget *hview_get_invfield_add_window(HviewInvFieldAddWidgetsT *dw);
 
+GtkWidget *hview_get_control_settings_window(HviewConDialogWidgetsT *w);
+GtkWidget *hview_get_watchdog_settings_window(HviewWatchDialogWidgetsT *w);
+
+GtkWidget *hview_get_domain_settings_window(HviewDomainDialogWidgetsT *w);
+GtkWidget *hview_get_domain_evlogtime_window(HviewDomainEvLogTSWidgetsT *w);
+
+GtkWidget *hview_get_domain_evlog_window(HviewDomainEvLogWidgetsT *w);
+
 #endif /* __HVIEW_WINDOWS_H__ */

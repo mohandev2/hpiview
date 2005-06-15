@@ -231,9 +231,9 @@ GtkWidget *hwidget_get_menubar(HviewWidgetsT *w)
 	return mbar;
 }
 
-GtkWidget *hwidget_get_resource_popup(GtkTreeModel *store,
-				      GtkTreeIter *iter,
-				      gpointer data)
+GtkWidget *hwidget_get_iter_popup(GtkTreeModel *store,
+				  GtkTreeIter *iter,
+				  gpointer data)
 {
 	HviewWidgetsT	*w = (HviewWidgetsT *) data;
 	GtkWidget	*menu,	*smenu;
@@ -247,6 +247,33 @@ GtkWidget *hwidget_get_resource_popup(GtkTreeModel *store,
 	gtk_tree_model_get(store, iter, VOH_LIST_COLUMN_TYPE, &type, -1);
 
 	switch (type) {
+	case VOH_ITER_IS_DOMAIN:
+		menu = gtk_menu_new();
+
+		sitem = hwidget_get_menu_item(NULL, "Domain event log",
+					      hview_domain_evlog_call,
+					      data);
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		sitem = hwidget_get_menu_item(NULL, "Event log timestamp",
+					      hview_domain_evlog_time_call,
+					      data);
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		sitem = hwidget_get_menu_item(NULL, "Event log clear",
+					      hview_domain_evlog_clear_call,
+					      data);
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		sitem = gtk_separator_menu_item_new();
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		sitem = hwidget_get_menu_item_from_stock(GTK_STOCK_PREFERENCES,
+						hview_domain_settings_call,
+						data);
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+		
+		return menu;
 	case VOH_ITER_IS_RPT:
 		gtk_tree_model_get(store, iter,
 				   VOH_LIST_COLUMN_CAPABILITY, &capability, -1);
@@ -327,7 +354,16 @@ GtkWidget *hwidget_get_resource_popup(GtkTreeModel *store,
 		gtk_container_add(GTK_CONTAINER(menu), sitem); 
 		return menu;
 	case VOH_ITER_IS_CONTROL:
-		return NULL;
+		menu = gtk_menu_new();
+
+		sitem = gtk_separator_menu_item_new();
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		sitem = hwidget_get_menu_item_from_stock(GTK_STOCK_PREFERENCES,
+						hview_control_settings_call,
+						data);
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+		return menu;
 	case VOH_ITER_IS_INVENTORY:
 		menu = gtk_menu_new();
 
@@ -340,6 +376,20 @@ GtkWidget *hwidget_get_resource_popup(GtkTreeModel *store,
 		gtk_container_add(GTK_CONTAINER(menu), sitem); 
 		return menu;
 	case VOH_ITER_IS_WATCHDOG:
+		menu = gtk_menu_new();
+
+		sitem = hwidget_get_menu_item(NULL, "Reset watchdog",
+					      hview_watchdog_reset_call, data);
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		sitem = gtk_separator_menu_item_new();
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		sitem = hwidget_get_menu_item_from_stock(GTK_STOCK_PREFERENCES,
+						hview_watchdog_settings_call,
+						data);
+		gtk_container_add(GTK_CONTAINER(menu), sitem);
+		return menu;
 	case VOH_ITER_IS_ANNUNCIATOR:
 	default:
 		return NULL;

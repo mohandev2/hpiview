@@ -53,6 +53,11 @@ GtkWidget *hview_get_domain_window(HviewWidgetsT *w)
 			 G_CALLBACK(hview_domain_row_activated_call),
 			 (gpointer) w);
 
+	g_signal_connect(G_OBJECT(w->domain_view), "button-press-event",
+			G_CALLBACK(hview_butpress_list_call),
+			(gpointer) w);
+
+	gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(w->domain_view), FALSE);
 	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(window),
 					      w->domain_view);
 
@@ -118,7 +123,7 @@ GtkWidget *hview_get_resource_window(HviewWidgetsT *w, gint page)
 			 (gpointer) w);
 
 	g_signal_connect(G_OBJECT(view), "button-press-event",
-			G_CALLBACK(hview_butpress_rlist_call),
+			G_CALLBACK(hview_butpress_list_call),
 			(gpointer) w);
 
 
@@ -945,6 +950,388 @@ GtkWidget *hview_get_invfield_add_window(HviewInvFieldAddWidgetsT *dw)
 	g_signal_connect(G_OBJECT(dw->data_view),
 			"button-press-event",
 			G_CALLBACK(hview_butpress_invdata_view_call), pw);
+
+	return dialog;
+}
+
+GtkWidget *hview_get_control_settings_window(HviewConDialogWidgetsT *w)
+{
+	HviewWidgetsT	*pw = w->parent_widgets;
+	GtkWidget	*dialog;
+	GtkWidget	*notebook;
+	GtkWidget	*vbox,		*vbox1,	*hbox;
+	GtkWidget	*frame;
+	GtkWidget	*label;
+	GtkWidget	*win;
+	GtkCellRenderer	*renderer;
+
+	dialog = gtk_dialog_new_with_buttons("Control",
+					     GTK_WINDOW(pw->main_window),
+					     GTK_DIALOG_MODAL |
+					        GTK_DIALOG_DESTROY_WITH_PARENT,
+					     GTK_STOCK_OK,
+					     GTK_RESPONSE_OK,
+					     GTK_STOCK_CANCEL,
+					     GTK_RESPONSE_CANCEL,
+					     NULL);
+
+	gtk_widget_set_size_request(GTK_WIDGET(dialog),
+				    HVIEW_SETTINGS_WINDOW_WIDTH,
+				    HVIEW_SETTINGS_WINDOW_HEIGHT);
+
+	notebook = w->notebook = gtk_notebook_new();
+	gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
+	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), notebook);
+
+	vbox = gtk_vbox_new(FALSE, 5);
+	label = gtk_label_new("General");
+	w->general_tab.tab_page_num = gtk_notebook_append_page(GTK_NOTEBOOK(
+							notebook), vbox, label);
+	
+	frame = gtk_frame_new("Control info");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);	
+	w->general_tab.info_box = gtk_vbox_new(TRUE, 5);
+	gtk_container_add(GTK_CONTAINER(frame), w->general_tab.info_box);
+
+	vbox = gtk_vbox_new(FALSE, 5);
+	label = gtk_label_new("Control state");
+	w->state_tab.tab_page_num = gtk_notebook_append_page(GTK_NOTEBOOK(
+							notebook), vbox, label);
+
+	frame = gtk_frame_new("Control state");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+	w->state_tab.state_box = gtk_vbox_new(TRUE, 5);
+	gtk_container_add(GTK_CONTAINER(frame), w->state_tab.state_box);
+
+	return dialog;
+}
+
+
+GtkWidget *hview_get_watchdog_settings_window(HviewWatchDialogWidgetsT *w)
+{
+	HviewWidgetsT	*pw = w->parent_widgets;
+	GtkWidget	*dialog;
+	GtkWidget	*notebook;
+	GtkWidget	*vbox,		*vbox1,	*hbox;
+	GtkWidget	*frame;
+	GtkWidget	*label;
+	GtkWidget	*win;
+	GtkCellRenderer	*renderer;
+
+	dialog = gtk_dialog_new_with_buttons("Watchdog",
+					     GTK_WINDOW(pw->main_window),
+					     GTK_DIALOG_MODAL |
+					        GTK_DIALOG_DESTROY_WITH_PARENT,
+					     GTK_STOCK_OK,
+					     GTK_RESPONSE_OK,
+					     GTK_STOCK_CANCEL,
+					     GTK_RESPONSE_CANCEL,
+					     NULL);
+
+	gtk_widget_set_size_request(GTK_WIDGET(dialog),
+				    HVIEW_SETTINGS_WINDOW_WIDTH,
+				    HVIEW_SETTINGS_WINDOW_HEIGHT);
+
+	notebook = gtk_notebook_new();
+	gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
+	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), notebook);
+
+	vbox = gtk_vbox_new(FALSE, 5);
+	label = gtk_label_new("General");
+	w->general_tab.tab_page_num = gtk_notebook_append_page(GTK_NOTEBOOK(
+							notebook), vbox, label);
+	
+	frame = gtk_frame_new("Watchdog configuration");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);	
+	w->general_tab.info_box = gtk_vbox_new(TRUE, 5);
+	gtk_container_add(GTK_CONTAINER(frame), w->general_tab.info_box);
+
+	label = gtk_label_new("Watchdog flags");
+	frame = gtk_frame_new("Watchdog timer use expiration flags");
+	w->flags_tab.tab_page_num = gtk_notebook_append_page(GTK_NOTEBOOK(
+						notebook), frame, label);
+
+	w->flags_tab.flags_box = gtk_vbox_new(TRUE, 10);
+	gtk_container_add(GTK_CONTAINER(frame), w->flags_tab.flags_box);
+
+	return dialog;
+}
+
+GtkWidget *hview_get_domain_settings_window(HviewDomainDialogWidgetsT *w)
+{
+	HviewWidgetsT	*pw = w->parent_widgets;
+	GtkWidget	*dialog;
+	GtkWidget	*frame;
+	GtkWidget	*entry;
+	GtkWidget	*notebook;
+	GtkWidget	*vbox,		*vbox1,		*hbox;
+	GtkWidget	*label;
+	GtkWidget	*win;
+	GtkCellRenderer	*renderer;
+
+	dialog = gtk_dialog_new_with_buttons ("Domain preferences",
+					      GTK_WINDOW(pw->main_window),
+					      GTK_DIALOG_MODAL |
+					        GTK_DIALOG_DESTROY_WITH_PARENT,
+					      GTK_STOCK_OK,
+					      GTK_RESPONSE_OK,
+					      GTK_STOCK_CANCEL,
+					      GTK_RESPONSE_CANCEL,
+					      NULL);
+
+	gtk_widget_set_size_request(GTK_WIDGET(dialog),
+				    HVIEW_SETTINGS_WINDOW_WIDTH + 100,
+				    HVIEW_SETTINGS_WINDOW_HEIGHT + 200);
+
+
+	notebook = gtk_notebook_new();
+	gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
+	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), notebook);
+
+	vbox = gtk_vbox_new(FALSE, 5);
+	label = gtk_label_new("General");
+	w->general_tab.tab_page_num = gtk_notebook_append_page(GTK_NOTEBOOK(
+							notebook), vbox, label);
+
+	frame = gtk_frame_new("Domain info");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 5);	
+
+	w->general_tab.info_box = gtk_vbox_new(FALSE, 5);
+	gtk_container_add(GTK_CONTAINER(frame), w->general_tab.info_box);
+
+	frame = gtk_frame_new("Domain tag");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, FALSE, 5);
+
+	entry = gtk_entry_new();
+	gtk_container_add(GTK_CONTAINER(frame), entry);
+
+	w->general_tab.tag_entry = entry;
+
+	vbox = gtk_vbox_new(FALSE, 5);
+	label = gtk_label_new("DAT");
+	w->dat_tab.tab_page_num = gtk_notebook_append_page(GTK_NOTEBOOK(
+							notebook), vbox, label);
+
+
+	frame = gtk_frame_new("Domain Alarm Table");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+
+	hbox = gtk_hbox_new(TRUE, 0);
+	gtk_container_add(GTK_CONTAINER(frame), hbox);
+
+	win = gtk_scrolled_window_new(NULL, NULL);
+	gtk_box_pack_start(GTK_BOX(hbox), win, TRUE, TRUE, 0);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(win),
+				       GTK_POLICY_AUTOMATIC,
+				       GTK_POLICY_AUTOMATIC);
+
+	gtk_widget_set_size_request(GTK_WIDGET(win), 200, 250);
+
+	w->dat_tab.alarms_view = gtk_tree_view_new();
+
+	renderer = gtk_cell_renderer_text_new();
+	gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(
+						w->dat_tab.alarms_view),
+						0, "Domain alarms",
+						renderer, "text", 0, NULL);
+	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(win),
+					      w->dat_tab.alarms_view);
+
+	vbox1 = gtk_vbox_new(FALSE, 10);
+	gtk_box_pack_start(GTK_BOX(hbox), vbox1, TRUE, FALSE, 0);
+
+	w->dat_tab.add_alarm = gtk_button_new_with_label(" Add alarm ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->dat_tab.add_alarm,
+			   FALSE, FALSE, 0);
+	gtk_widget_set_sensitive(w->dat_tab.add_alarm, FALSE);
+
+	w->dat_tab.delete_alarm = gtk_button_new_with_label(" Delete alarm ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->dat_tab.delete_alarm,
+			   FALSE, FALSE, 0);
+	gtk_widget_set_sensitive(w->dat_tab.delete_alarm, FALSE);
+
+	w->dat_tab.ack_alarm = gtk_button_new_with_label(" Acknowlege alarm ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->dat_tab.ack_alarm,
+			   FALSE, FALSE, 0);
+	gtk_widget_set_sensitive(w->dat_tab.ack_alarm, FALSE);
+
+	frame = gtk_frame_new("Alarm info");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 0);
+
+	w->dat_tab.alarminfo_box = gtk_vbox_new(TRUE, 0);
+	gtk_container_add(GTK_CONTAINER(frame), w->dat_tab.alarminfo_box);
+
+	return dialog;
+}
+
+GtkWidget *hview_get_domain_evlogtime_window(HviewDomainEvLogTSWidgetsT *w)
+{
+	HviewWidgetsT	*pw = w->parent_widgets;
+	GtkWidget	*dialog;
+	GtkWidget	*frame;
+	GtkWidget	*hbox,		*vbox;
+	GtkWidget	*label;
+
+	dialog = gtk_dialog_new_with_buttons ("Domain event log timestamp",
+					      GTK_WINDOW(pw->main_window),
+					      GTK_DIALOG_MODAL |
+					        GTK_DIALOG_DESTROY_WITH_PARENT,
+					      GTK_STOCK_OK,
+					      GTK_RESPONSE_OK,
+					      GTK_STOCK_CANCEL,
+					      GTK_RESPONSE_CANCEL,
+					      NULL);
+
+	gtk_widget_set_size_request(GTK_WIDGET(dialog),
+				    HVIEW_SETTINGS_WINDOW_WIDTH + 100,
+				    HVIEW_SETTINGS_WINDOW_HEIGHT - 100);
+
+
+	frame = gtk_frame_new("Domain event log timestamp");
+	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), frame,
+							TRUE, TRUE, 5);
+	vbox = gtk_vbox_new(FALSE, 10);
+	gtk_container_add(GTK_CONTAINER(frame), vbox);
+
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), hbox, TRUE, TRUE, 0);
+
+	w->calendar = gtk_calendar_new();
+	gtk_box_pack_start(GTK_BOX(hbox), w->calendar, FALSE, FALSE, 0);
+	label = gtk_label_new("   ");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+
+	w->hour = gtk_spin_button_new_with_range(0, 23, 1);
+	gtk_box_pack_start(GTK_BOX(hbox), w->hour, FALSE, FALSE, 0);
+	gtk_spin_button_set_wrap(GTK_SPIN_BUTTON(w->hour), TRUE);
+	gtk_entry_set_max_length(GTK_ENTRY(w->hour), 2);
+	label = gtk_label_new(" : ");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+
+	w->min = gtk_spin_button_new_with_range(0, 59, 1);
+	gtk_box_pack_start(GTK_BOX(hbox), w->min, FALSE, FALSE, 0);
+	gtk_spin_button_set_wrap(GTK_SPIN_BUTTON(w->min), TRUE);
+	gtk_entry_set_max_length(GTK_ENTRY(w->min), 2);
+	label = gtk_label_new(" : ");
+	gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+
+	w->sec = gtk_spin_button_new_with_range(0, 59, 1);
+	gtk_spin_button_set_wrap(GTK_SPIN_BUTTON(w->sec), TRUE);
+	gtk_entry_set_max_length(GTK_ENTRY(w->sec), 2);
+	gtk_box_pack_start(GTK_BOX(hbox), w->sec, FALSE, FALSE, 0);
+
+	w->time_box = gtk_hbox_new(FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), w->time_box, FALSE, FALSE, 0);
+
+	return dialog;
+}
+
+GtkWidget *hview_get_domain_evlog_window(HviewDomainEvLogWidgetsT *w)
+{
+	HviewWidgetsT	*pw = w->parent_widgets;
+	GtkWidget	*dialog;
+	GtkWidget	*notebook;
+	GtkWidget	*vbox,		*vbox1,	*hbox;
+	GtkWidget	*frame;
+	GtkWidget	*label;
+	GtkWidget	*but;
+	GtkWidget	*win;
+	GtkCellRenderer	*renderer;
+
+	dialog = gtk_dialog_new_with_buttons("Domain event log",
+					     GTK_WINDOW(pw->main_window),
+					     GTK_DIALOG_MODAL |
+					        GTK_DIALOG_DESTROY_WITH_PARENT,
+					     GTK_STOCK_OK,
+					     GTK_RESPONSE_OK,
+					     GTK_STOCK_CANCEL,
+					     GTK_RESPONSE_CANCEL,
+					     NULL);
+
+	gtk_widget_set_size_request(GTK_WIDGET(dialog),
+				    HVIEW_SETTINGS_WINDOW_WIDTH + 75,
+				    HVIEW_SETTINGS_WINDOW_HEIGHT + 100);
+
+	notebook = gtk_notebook_new();
+	gtk_notebook_set_tab_pos(GTK_NOTEBOOK(notebook), GTK_POS_TOP);
+	gtk_container_add(GTK_CONTAINER(GTK_DIALOG(dialog)->vbox), notebook);
+
+	vbox = gtk_vbox_new(FALSE, 5);
+	label = gtk_label_new("General");
+	w->general_tab.tab_page_num = gtk_notebook_append_page(GTK_NOTEBOOK(
+							notebook), vbox, label);
+	
+	frame = gtk_frame_new("Event log info");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);	
+	w->general_tab.info_box = gtk_vbox_new(TRUE, 0);
+	gtk_container_add(GTK_CONTAINER(frame), w->general_tab.info_box);
+
+	hbox = gtk_hbox_new(FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE,0);
+
+	w->general_tab.enable_state = gtk_check_button_new_with_label(
+						"Event log enable state");
+	gtk_box_pack_start(GTK_BOX(hbox), w->general_tab.enable_state,
+			   TRUE, FALSE, 0);
+
+	w->general_tab.overflow_reset = gtk_button_new_with_label(
+		       				" Overflow reset");
+	g_signal_connect(G_OBJECT(w->general_tab.overflow_reset), "clicked",
+			 G_CALLBACK(hview_domain_evlog_overflow_reset_call),
+			 (gpointer) pw);
+	gtk_box_pack_start(GTK_BOX(hbox), w->general_tab.overflow_reset,
+							TRUE, FALSE, 10);
+
+	vbox = gtk_vbox_new(FALSE, 0);
+	label = gtk_label_new("Event log entries");
+	w->evlog_tab.tab_page_num = gtk_notebook_append_page(GTK_NOTEBOOK(
+							notebook), vbox, label);
+
+
+	frame = gtk_frame_new("Domain event log entries");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
+
+	hbox = gtk_hbox_new(TRUE, 0);
+	gtk_container_add(GTK_CONTAINER(frame), hbox);
+
+	win = gtk_scrolled_window_new(NULL, NULL);
+	gtk_box_pack_start(GTK_BOX(hbox), win, TRUE, TRUE, 0);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(win),
+				       GTK_POLICY_AUTOMATIC,
+				       GTK_POLICY_AUTOMATIC);
+
+//	gtk_widget_set_size_request(GTK_WIDGET(win), 200, 150);
+
+	w->evlog_tab.evlog_view = gtk_tree_view_new();
+
+	renderer = gtk_cell_renderer_text_new();
+	gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(
+						w->evlog_tab.evlog_view),
+						VOH_LIST_COLUMN_NAME,
+						"Domain event log entries",
+						renderer, "text",
+						VOH_LIST_COLUMN_NAME, NULL);
+	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(win),
+					      w->evlog_tab.evlog_view);
+
+	vbox1 = gtk_vbox_new(FALSE, 1);
+	gtk_box_pack_start(GTK_BOX(hbox), vbox1, TRUE, FALSE, 0);
+
+	w->evlog_tab.add_evlog = gtk_button_new_with_label(" Add entry ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->evlog_tab.add_evlog,
+			   FALSE, FALSE, 5);
+	gtk_widget_set_sensitive(w->evlog_tab.add_evlog, FALSE);
+
+	w->evlog_tab.delete_evlog = gtk_button_new_with_label(" Delete entry ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->evlog_tab.delete_evlog,
+			   FALSE, FALSE, 5);
+	gtk_widget_set_sensitive(w->evlog_tab.delete_evlog, FALSE);
+
+	frame = gtk_frame_new("Event log entry info");
+	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 0);
+
+	w->evlog_tab.entryinfo_box = gtk_vbox_new(TRUE, 0);
+	gtk_container_add(GTK_CONTAINER(frame), w->evlog_tab.entryinfo_box);
 
 	return dialog;
 }

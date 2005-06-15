@@ -40,7 +40,7 @@ void hview_tree_row_activated_call(GtkWidget *widget,
 					  GtkTreeIter *iter,
 					  GtkTreePath *path,
 					  gpointer data);
-gboolean hview_butpress_rlist_call(GtkWidget *widget,
+gboolean hview_butpress_list_call(GtkWidget *widget,
 				   GdkEventButton *event,
 				   gpointer data);
 void hview_domain_row_activated_call(GtkWidget *widget,
@@ -110,6 +110,33 @@ gboolean hview_invfield_remove_call(GtkWidget *button, gpointer data);
 
 void hview_invfield_set_apply_response(HviewCallDataT *cdata);
 gboolean hview_invfield_set_call(GtkWidget *widget, gpointer data);
+
+
+void hview_control_settings_ok_response(gpointer data);
+void hview_control_settings_call(GtkWidget *widget, gpointer data);
+
+void hview_watchdog_settings_ok_response(gpointer data);
+void hview_watchdog_settings_call(GtkWidget *widget, gpointer data);
+
+gint hview_watchdog_reset_thread(gpointer data);
+void hview_watchdog_reset_call(GtkWidget *widget, gpointer data);
+
+
+void hview_domain_settings_ok_response(gpointer data);
+void hview_domain_settings_call(GtkWidget *widget, gpointer data);
+
+void hview_domain_evlog_time_ok_response(gpointer data);
+void hview_domain_evlog_time_call(GtkWidget *widget, gpointer data);
+
+void hview_domain_evlog_ok_response(gpointer data);
+void hview_domain_evlog_call(GtkWidget *widget, gpointer data);
+void hview_domain_evlog_clear_call(GtkWidget *widget, gpointer data);
+void hview_domain_evlog_overflow_reset_call(GtkWidget *widget, gpointer data);
+
+gboolean hview_domain_evlog_selected_call(GtkTreeSelection *selection,
+					  gpointer data);
+gboolean hview_domain_alarm_selected_call(GtkTreeSelection *selection,
+					  gpointer data);
 
 #endif
 

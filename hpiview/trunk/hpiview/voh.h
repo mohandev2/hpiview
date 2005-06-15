@@ -2,6 +2,7 @@
 #ifndef __VOH_H__
 #define __VOH_H__
 
+#include <SaHpi.h>
 #include "voh_types.h"
 
 enum {
@@ -44,6 +45,9 @@ enum {
       VOH_ITER_SENSOR_STATE_CRITICAL,
 };
 
+#define VOH_DOMAIN_STATE_UNSPECIFIED		0x0
+#define VOH_DOMAIN_STATE_OPENED			0x1
+
 #define VOH_ITER_RPT_STATE_UNSPECIFIED		0x0
 #define VOH_ITER_RPT_STATE_POWER_ON		0x1
 #define VOH_ITER_RPT_STATE_POWER_OFF		0x2
@@ -56,6 +60,13 @@ enum {
 
 #define VOH_ITER_SENSOR_CAPABILITY_UNSPECIFIED	0x0
 #define VOH_ITER_SENSOR_CAPABILITY_THRESHOLD	0x1
+
+#define VOH_CONTROL_DIGITAL		SAHPI_CTRL_TYPE_DIGITAL
+#define VOH_CONTROL_DISCRETE		SAHPI_CTRL_TYPE_DISCRETE
+#define VOH_CONTROL_ANALOG		SAHPI_CTRL_TYPE_ANALOG
+#define VOH_CONTROL_STREAM		SAHPI_CTRL_TYPE_STREAM
+#define VOH_CONTROL_TEXT		SAHPI_CTRL_TYPE_TEXT
+#define VOH_CONTROL_OEM			SAHPI_CTRL_TYPE_OEM
 
 guint voh_open_session(guint domainid, gchar *err);
 gboolean voh_discover(guint sessionid, gchar *err);
@@ -226,6 +237,104 @@ gboolean voh_idr_field_set(guint sessionid,
 			   guint rdrentryid,
 			   VtDataT *field,
 			   gchar *err);
+
+gboolean voh_get_control_info(guint sessionid,
+			      guint resourceid,
+			      guint rdrentryid,
+			      VtData1T **info,
+			      gchar *err);
+
+gboolean voh_control_get(guint sessionid,
+			 guint resourceid,
+			 guint rdrentryid,
+			 VtData1T **mode,
+			 VtData1T **state,
+			 gchar *err);
+
+gboolean voh_control_type_get(guint sessionid,
+			      guint resourceid,
+			      guint rdrentryid,
+			      VtData1T **ctrltype,
+			      gchar *err);
+gboolean voh_control_set(guint sessionid,
+			 guint resourceid,
+			 guint rdrentryid,
+			 VtData1T *mode_data,
+			 VtData1T *state_data,
+			 gchar *err);
+gboolean voh_watchdog_timer_get(guint sessionid,
+				guint resourceid,
+				guint rdrentryid,
+				VtData1T **watchdog_data,
+				gchar *err);
+gboolean voh_watchdog_timer_set(guint sessionid,
+				guint resourceid,
+				guint rdrentryid,
+				VtData1T *watchdog_data,
+				gchar *err);
+gboolean voh_watchdog_timer_reset(guint sessionid,
+				  guint resourceid,
+				  guint rdrentryid,
+				  gchar *err);
+gboolean voh_domain_tag_set(guint sessionid,
+			    VtData1T *tag_data,
+			    gchar *err);
+gboolean voh_alarm_get_next(guint sessionid,
+			    guint severity,
+			    gboolean unack_only,
+			    VtData1T *alarm_data,
+			    gchar *err);
+gboolean voh_alarm_get(guint sessionid,
+		       guint entryid,
+		       VtData1T **alarm_data,
+		       gchar *err);
+
+GList *voh_get_all_alarms(guint sessionid,
+			  gchar *err);
+
+gboolean voh_event_log_time_get(guint sessionid,
+				gint resourceid,
+				gfloat *time,
+				gchar *err);
+gboolean voh_event_log_time_set(guint sessionid,
+				gint resourceid,
+				gfloat time,
+				gchar *err);
+
+gboolean voh_event_log_info_get(guint sessionid,
+				guint resourceid,
+				VtData1T **evlog_data,
+				gchar *err);
+gboolean voh_event_log_state_set(guint sessionid,
+				 guint resourceid,
+				 gboolean enabled,
+				 gchar *err);
+gboolean voh_event_log_clear(guint sessionid,
+			     guint resourceid,
+			     gchar *err);
+gboolean voh_event_log_overflow_reset(guint sessionid,
+				      guint resourceid,
+				      gchar *err);
+
+gboolean voh_get_evlog_entry_info(guint sessionid,
+				  guint resourceid,
+				  guint entryid,
+				  VtData1T **entry_data,
+				  gchar *err);
+
+GList *voh_get_evlog_entries(guint sessionid,
+			     gchar *err);
+
+GList *voh_get_evlog_entries(guint sessionid,
+			     gchar *err);
+
+GtkListStore *voh_get_ctrl_digital_state_list(void);
+GtkListStore *voh_get_ctrl_mode_list(void);
+
+GtkListStore *voh_get_watchdog_timer_use_list(void);
+GtkListStore *voh_get_watchdog_action_list(void);
+GtkListStore *voh_get_watchdog_pretimer_interrupt_list(void);
+GList *voh_get_watchdog_exp_flags_list();
 
 #endif /* __VOH_H__ */
 
