@@ -43,8 +43,8 @@ enum {
 
 GtkWidget *hwidget_get_menubar(HviewWidgetsT *w);
 
-GtkWidget *hwidget_get_resource_popup(GtkTreeModel *store,
-				      GtkTreeIter *iter,
-				      gpointer data);
+GtkWidget *hwidget_get_iter_popup(GtkTreeModel *store,
+				  GtkTreeIter *iter,
+				  gpointer data);
 
 #endif /* __HVIEW_WIDGETS_H__ */

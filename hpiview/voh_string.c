@@ -1229,3 +1229,80 @@ GList *vohIdrFieldType2List(void)
 
 }
 
+const char *vohCtrlType2String(SaHpiCtrlTypeT type)
+{
+      static cMap type_map[] = {
+		{SAHPI_CTRL_TYPE_DIGITAL,		"digital"},
+		{SAHPI_CTRL_TYPE_DISCRETE,		"discrete"},
+		{SAHPI_CTRL_TYPE_ANALOG,		"analog"},
+		{SAHPI_CTRL_TYPE_STREAM,		"stream"},
+		{SAHPI_CTRL_TYPE_TEXT,			"text"},
+		{SAHPI_CTRL_TYPE_OEM,			"oem type"},
+		{0, 0}
+      };
+
+      return ValueToString(type_map, type, "%d");
+
+}
+
+const char *vohCtrlOutputType2String(SaHpiCtrlOutputTypeT type)
+{
+      static cMap type_map[] = {
+		{SAHPI_CTRL_GENERIC,			"generic"},
+		{SAHPI_CTRL_LED,			"led"},
+		{SAHPI_CTRL_FAN_SPEED,			"fan speed"},
+		{SAHPI_CTRL_DRY_CONTACT_CLOSURE, "dry contact closure"},
+		{SAHPI_CTRL_POWER_SUPPLY_INHIBIT, "power supply inhibit"},
+		{SAHPI_CTRL_AUDIBLE,			"audible"},
+		{SAHPI_CTRL_FRONT_PANEL_LOCKOUT, "front panel lockout"},
+		{SAHPI_CTRL_POWER_INTERLOCK,		"power interlock"},
+		{SAHPI_CTRL_POWER_STATE,		"power state"},
+		{SAHPI_CTRL_LCD_DISPLAY,		"lcd display"},
+		{SAHPI_CTRL_OEM,			"oem type"},
+		{0, 0}
+      };
+
+      return ValueToString(type_map, type, "%d");
+
+}
+
+const char *vohCtrlMode2String(SaHpiCtrlModeT mode)
+{
+      static cMap mode_map[] = {
+	      {SAHPI_CTRL_MODE_AUTO,		"auto"},
+	      {SAHPI_CTRL_MODE_MANUAL,		"manual"},
+	      {0, 0}
+      };
+
+      return ValueToString(mode_map, mode, "%d");
+
+}
+
+const char *vohCtrlStateDigital2String(SaHpiCtrlStateDigitalT state)
+{
+      static cMap state_map[] = {
+	      {SAHPI_CTRL_STATE_OFF,		"off"},
+	      {SAHPI_CTRL_STATE_ON,		"on"},
+	      {SAHPI_CTRL_STATE_PULSE_OFF,	"pulse off"},
+	      {SAHPI_CTRL_STATE_PULSE_ON,	"pulse on"},
+	      {0, 0}
+      };
+
+      return ValueToString(state_map, state, "%d");
+
+}
+
+GList *vohCtrlStateDigital2List(void)
+{
+      static cMap state_map[] = {
+		{SAHPI_CTRL_STATE_OFF,		"off"},
+		{SAHPI_CTRL_STATE_ON,		"on"},
+		{SAHPI_CTRL_STATE_PULSE_OFF,	"pulse off"},
+		{SAHPI_CTRL_STATE_PULSE_ON,	"pulse on"},
+		{0, 0}
+      };
+
+      return create_object_list(state_map);
+
+}
+

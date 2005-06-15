@@ -4,6 +4,7 @@
 #include "voh_string.h"
 #include "voh.h"
 #include "hview_utils.h"
+#include "voh_convert_type.h"
 
 /* #include "hview_service.h" */
 
@@ -220,11 +221,11 @@ static void v_get_infra(SaHpiDomainIdT did, GtkTreeStore *store,
 
       gtk_tree_store_set(store, &iter,
 			 VOH_LIST_COLUMN_NAME, name,
-			 VOH_LIST_COLUMN_ID, (guint)did,
+			 VOH_LIST_COLUMN_ID, (guint)session,
 			 VOH_LIST_COLUMN_TYPE, VOH_ITER_IS_DOMAIN,
+			 VOH_LIST_COLUMN_STATE, 0,
 			 -1);
 
-      saHpiSessionClose(session);
 }
 
 static void voh_add_resource(GtkTreeStore *pstore, guint sessionid,
@@ -639,7 +640,7 @@ GtkTreeModel *voh_get_resource_details(guint sessionid,
       gtk_tree_store_append(info_store, &iter, NULL);
       vohFullEntityPath2String(&(entry.ResourceEntity), name);
       gtk_tree_store_set(info_store, &iter,
-			 0, "Enity path",
+			 0, "Entity path",
 			 1, name,
 			 -1);
 
@@ -697,6 +698,7 @@ GtkTreeModel *voh_rdr_info(guint sessionid, guint resourceid,
       SaHpiEntryIdT		nextentryid;
       SaHpiSensorRecT		*sensor;
       SaHpiInventoryRecT	inventory;
+      SaHpiCtrlRecT		control;
       SaHpiSessionIdT		sid = (SaHpiSessionIdT)sessionid;
       SaHpiResourceIdT		rid = (SaHpiResourceIdT)resourceid;
       SaHpiEntryIdT		rdrid = (SaHpiEntryIdT)rdrentryid;
@@ -726,16 +728,14 @@ GtkTreeModel *voh_rdr_info(guint sessionid, guint resourceid,
 			 1, name,
 			 -1);
 
+      gtk_tree_store_set(info_store, &iter,
+		         0, "FRU entity",
+			 1, vohBoolean2String(rdr.IsFru),
+			 -1);
+
       switch (rdr.RdrType) {
 	case SAHPI_SENSOR_RDR:
 	    sensor = &(rdr.RdrTypeUnion.SensorRec);
-
-	    gtk_tree_store_append(info_store, &iter, NULL);
-	    sprintf(ids, "%d", sensor->Num);
-	    gtk_tree_store_set(info_store, &iter,
-			       0, "Sensor Id",
-			       1, ids,
-			       -1);
 
 	    gtk_tree_store_append(info_store, &iter, NULL);
 	    gtk_tree_store_set(info_store, &iter,
@@ -864,22 +864,152 @@ GtkTreeModel *voh_rdr_info(guint sessionid, guint resourceid,
 
 	    gtk_tree_store_append(info_store, &iter, NULL);
 	    gtk_tree_store_set(info_store, &iter,
-			       0, "FRU entity",
-			       1, vohBoolean2String(rdr.IsFru),
-			       -1);
-
-	    gtk_tree_store_append(info_store, &iter, NULL);
-	    gtk_tree_store_set(info_store, &iter,
-			       0, "Persistent",
+			       0, "Inventory's persistent",
 			       1, vohBoolean2String(inventory.Persistent),
 			       -1);
 
+	    break;
+	case SAHPI_CTRL_RDR:
+	    control = rdr.RdrTypeUnion.CtrlRec;
+
 	    gtk_tree_store_append(info_store, &iter, NULL);
-	    sprintf(name, "%d", inventory.Oem);
 	    gtk_tree_store_set(info_store, &iter,
-			    0, "Oem data",
-			    1, name,
-			    -1);
+			       0, "Control type",
+			       1, vohCtrlType2String(control.Type),
+			       -1);
+
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			      0, "Write only control",
+			      1, vohBoolean2String(control.WriteOnly),
+			      -1);
+
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "Control output type",
+			       1, vohCtrlOutputType2String(control.OutputType),
+			       -1);
+
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "Default mode",
+			       1, vohCtrlMode2String(control.DefaultMode.Mode),
+			       -1);
+
+	    gtk_tree_store_append(info_store, &iter, NULL);
+	    gtk_tree_store_set(info_store, &iter,
+			       0, "Read only mode",
+			       1, vohBoolean2String(
+				       control.DefaultMode.ReadOnly),
+			       -1);
+
+	    switch (control.Type) {
+	    case SAHPI_CTRL_TYPE_DIGITAL:
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Control default state",
+				       1, vohCtrlStateDigital2String(
+					    control.TypeUnion.Digital.Default),
+				       -1);
+		    break;
+	    case SAHPI_CTRL_TYPE_DISCRETE:
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    sprintf(name, "%d", control.TypeUnion.Discrete.Default);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Control default state",
+				       1, name,
+				       -1);
+		    break;
+	    case SAHPI_CTRL_TYPE_ANALOG:
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    sprintf(name, "%d", control.TypeUnion.Analog.Min);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Min control state value",
+				       1, name,
+				       -1);
+
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    sprintf(name, "%d", control.TypeUnion.Analog.Max);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Max control state value",
+				       1, name,
+				       -1);
+
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    sprintf(name, "%d", control.TypeUnion.Analog.Default);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Default control state value",
+				       1, name,
+				       -1);
+		    break;
+	    case SAHPI_CTRL_TYPE_STREAM:
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    memcpy(name, control.TypeUnion.Stream.Default.Stream,
+				 control.TypeUnion.Stream.Default.StreamLength);
+		    name[control.TypeUnion.Stream.Default.StreamLength] = '\0';
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Control default state",
+				       1, name,
+				       -1);
+		    break;
+	    case SAHPI_CTRL_TYPE_TEXT:
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    sprintf(name, "%d", control.TypeUnion.Text.MaxChars);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Maximum of chars per line",
+				       1, name,
+				       -1);
+
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    sprintf(name, "%d", control.TypeUnion.Text.MaxLines);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Maximum of lines",
+				       1, name,
+				       -1);
+
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    sprintf(name, "%d", control.TypeUnion.Text.Default.Line);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Control default line",
+				       1, name,
+				       -1);
+
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    fixstr(&control.TypeUnion.Text.Default.Text, name);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Control default state",
+				       1, name,
+				       -1);
+		    break;
+	    case SAHPI_CTRL_TYPE_OEM:
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    sprintf(name, "%d", control.TypeUnion.Oem.MId);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Control manufacturer Id",
+				       1, name,
+				       -1);
+
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    memcpy(name, control.TypeUnion.Oem.ConfigData,
+				    SAHPI_CTRL_OEM_CONFIG_LENGTH);
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Oem configuration data",
+				       1, name,
+				       -1);
+
+		    gtk_tree_store_append(info_store, &iter, NULL);
+		    memcpy(name, control.TypeUnion.Oem.Default.Body,
+				    control.TypeUnion.Oem.Default.BodyLength);
+		    name[control.TypeUnion.Oem.Default.BodyLength] = '\0';
+		    gtk_tree_store_set(info_store, &iter,
+				       0, "Control default state",
+				       1, name,
+				       -1);
+		    break;
+	    default:
+		    break;
+	    }
+
 	    break;
 	default:
 	    break;
@@ -3059,3 +3189,1534 @@ gboolean voh_idr_field_set(guint sessionid,
 	return TRUE;
 }
 
+gboolean voh_get_control_info(guint sessionid,
+			      guint resourceid,
+			      guint rdrentryid,
+			      VtData1T **info,
+			      gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiCtrlRecT		control;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	VtData1T		*data = NULL;
+	gchar			name[1024];
+	VtHpiDataMap1T		*map;
+	VtHpiDataMap1T	map_digital[] = {
+		{VT_VAR,	"type",		VT_UINT,
+			"Control type",		vt_convert_ctrl_type},
+		{VT_VAR,	"write_only",	VT_BOOLEAN,
+			"Write only control",	vt_convert_boolean},
+		{VT_VAR,	"output_type",	VT_UINT,
+			"Control output type",	vt_convert_ctrl_output_type},
+		{VT_VAR,	"default_mode",	VT_UINT,
+			"Default mode",		vt_convert_ctrl_mode},
+		{VT_VAR,	"read_only_mode", VT_BOOLEAN,
+			"Read only control mode", vt_convert_boolean},
+		{VT_VAR,	"default",	VT_UINT,
+			"Control default state", vt_convert_ctrl_state_digital},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+	VtHpiDataMap1T	map_discrete[] = {
+		{VT_VAR,	"type",		VT_UINT,
+			"Control type",		vt_convert_ctrl_type},
+		{VT_VAR,	"write_only",	VT_BOOLEAN,
+			"Write only control",	vt_convert_boolean},
+		{VT_VAR,	"output_type",	VT_UINT,
+			"Control output type",	vt_convert_ctrl_output_type},
+		{VT_VAR,	"default_mode",	VT_UINT,
+			"Default mode",		vt_convert_ctrl_mode},
+		{VT_VAR,	"read_only_mode", VT_BOOLEAN,
+			"Read only control mode", vt_convert_boolean},
+		{VT_VAR,	"default",	VT_UINT,
+			"Control default state", NULL},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+	VtHpiDataMap1T	map_analog[] = {
+		{VT_VAR,	"type",		VT_UINT,
+			"Control type",		vt_convert_ctrl_type},
+		{VT_VAR,	"write_only",	VT_BOOLEAN,
+			"Write only control",	vt_convert_boolean},
+		{VT_VAR,	"output_type",	VT_UINT,
+			"Control output type",	vt_convert_ctrl_output_type},
+		{VT_VAR,	"default_mode",	VT_UINT,
+			"Default mode",		vt_convert_ctrl_mode},
+		{VT_VAR,	"read_only_mode", VT_BOOLEAN,
+			"Read only control mode", vt_convert_boolean},
+		{VT_VAR,	"min",		VT_UINT,
+			"Min control state value", NULL},
+		{VT_VAR,	"max",		VT_UINT,
+			"Max control state value", NULL},
+		{VT_VAR,	"default",	VT_UINT,
+			"Control default state", NULL},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+	VtHpiDataMap1T	map_stream[] = {
+		{VT_VAR,	"type",		VT_UINT,
+			"Control type",		vt_convert_ctrl_type},
+		{VT_VAR,	"write_only",	VT_BOOLEAN,
+			"Write only control",	vt_convert_boolean},
+		{VT_VAR,	"output_type",	VT_UINT,
+			"Control output type",	vt_convert_ctrl_output_type},
+		{VT_VAR,	"default_mode",	VT_UINT,
+			"Default mode",		vt_convert_ctrl_mode},
+		{VT_VAR,	"read_only_mode", VT_BOOLEAN,
+			"Read only control mode", vt_convert_boolean},
+		{VT_VAR,	"default",	VT_BUFFER,
+			"Control default state", NULL},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+	VtHpiDataMap1T	map_text[] = {
+		{VT_VAR,	"type",		VT_UINT,
+			"Control type",		vt_convert_ctrl_type},
+		{VT_VAR,	"write_only",	VT_BOOLEAN,
+			"Write only control",	vt_convert_boolean},
+		{VT_VAR,	"output_type",	VT_UINT,
+			"Control output type",	vt_convert_ctrl_output_type},
+		{VT_VAR,	"default_mode",	VT_UINT,
+			"Default mode",		vt_convert_ctrl_mode},
+		{VT_VAR,	"read_only_mode", VT_BOOLEAN,
+			"Read only control mode", vt_convert_boolean},
+		{VT_VAR,	"max_chars",	VT_UINT,
+			"Maximum of chars per line", NULL},
+		{VT_VAR,	"max_lines",	VT_UINT,
+			"Maximum of lines",	NULL},
+		{VT_VAR,	"line",		VT_UINT,
+			"Control default line", NULL},
+		{VT_VAR,	"default",	VT_BUFFER,
+			"Control default state", NULL},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+	VtHpiDataMap1T	map_oem[] = {
+		{VT_VAR,	"type",		VT_UINT,
+			"Control type",		vt_convert_ctrl_type},
+		{VT_VAR,	"write_only",	VT_BOOLEAN,
+			"Write only control",	vt_convert_boolean},
+		{VT_VAR,	"output_type",	VT_UINT,
+			"Control output type",	vt_convert_ctrl_output_type},
+		{VT_VAR,	"default_mode",	VT_UINT,
+			"Default mode",		vt_convert_ctrl_mode},
+		{VT_VAR,	"read_only_mode", VT_BOOLEAN,
+			"Read only control mode", vt_convert_boolean},
+		{VT_VAR,	"m_id", 	VT_UINT,
+			"Control manufacturer Id", NULL},
+		{VT_VAR,	"config_data",	VT_BUFFER,
+			"Control configuration data", NULL},
+		{VT_VAR,	"default",	VT_BUFFER,
+			"Control default state", NULL},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+
+
+	*info = NULL;
+
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting control info failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_CTRL_RDR) {
+		VOH_ERROR(err, "Getting control info failed", -1);
+		return FALSE;
+	}
+
+	control = rdr.RdrTypeUnion.CtrlRec;
+
+	switch (control.Type) {
+	case SAHPI_CTRL_TYPE_DIGITAL:
+		map = map_digital;
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control details",
+				map);
+		vt_data_value_set1(data, "default",
+				control.TypeUnion.Digital.Default);
+		break;
+	case SAHPI_CTRL_TYPE_DISCRETE:
+		map = map_discrete;
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control details",
+				map);
+		vt_data_value_set1(data, "default",
+				control.TypeUnion.Discrete.Default);
+		break;
+	case SAHPI_CTRL_TYPE_ANALOG:
+		map = map_analog;
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control details",
+				map);
+		vt_data_value_set1(data, "min",
+				control.TypeUnion.Analog.Min);
+		vt_data_value_set1(data, "max",
+				control.TypeUnion.Analog.Max);
+		vt_data_value_set1(data, "default",
+				control.TypeUnion.Analog.Default);
+		break;
+	case SAHPI_CTRL_TYPE_STREAM:
+		map = map_stream;
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control details",
+				map);
+		memcpy(name, control.TypeUnion.Stream.Default.Stream,
+				 control.TypeUnion.Stream.Default.StreamLength);
+		name[control.TypeUnion.Stream.Default.StreamLength] = '\0';
+		vt_data_value_str_set1(data, "default", name);
+		break;
+	case SAHPI_CTRL_TYPE_TEXT:
+		map = map_text;
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control details",
+				map);
+		vt_data_value_set1(data, "max_chars",
+				control.TypeUnion.Text.MaxChars);
+		vt_data_value_set1(data, "max_lines",
+				control.TypeUnion.Text.MaxLines);
+		vt_data_value_set1(data, "line",
+				control.TypeUnion.Text.Default.Line);
+		fixstr(&control.TypeUnion.Text.Default.Text, name);
+		vt_data_value_str_set1(data, "default", name);
+		break;
+	case SAHPI_CTRL_TYPE_OEM:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control details",
+				map_oem);
+		vt_data_value_set1(data, "m_id",
+				control.TypeUnion.Oem.MId);
+		memcpy(name, control.TypeUnion.Oem.ConfigData,
+				    SAHPI_CTRL_OEM_CONFIG_LENGTH);
+		vt_data_value_str_set1(data, "config_data", name);
+		memcpy(name, control.TypeUnion.Oem.Default.Body,
+				    control.TypeUnion.Oem.Default.BodyLength);
+		name[control.TypeUnion.Oem.Default.BodyLength] = '\0';
+		vt_data_value_str_set1(data, "default", name);
+		break;
+	default:
+		return FALSE;
+	}
+
+	vt_data_value_set1(data, "type", control.Type);
+	vt_data_value_set1(data, "output_type", control.OutputType);
+	vt_data_value_set1(data, "write_only", control.WriteOnly);
+	vt_data_value_set1(data, "default_mode", control.DefaultMode.Mode);
+	vt_data_value_set1(data, "read_only_mode",
+				control.DefaultMode.ReadOnly);
+
+	*info = data;
+
+	return TRUE;
+}
+
+gboolean voh_control_get(guint sessionid,
+			 guint resourceid,
+			 guint rdrentryid,
+			 VtData1T **mode,
+			 VtData1T **state,
+			 gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiCtrlRecT		control;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	VtData1T		*data = NULL;
+	SaHpiCtrlStateT		h_state;
+	SaHpiCtrlModeT		h_mode;
+	gchar			name[1024];
+	VtHpiDataMap1T		*map;
+	VtHpiDataMap1T	map_digital_state[] = {
+		{VT_VAR,	"state",	VT_UINT,
+			"Control current state", vt_convert_ctrl_state_digital},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+	VtHpiDataMap1T	map_discrete_state[] = {
+		{VT_VAR,	"state",	VT_UINT,
+			"Control current state", NULL},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+	VtHpiDataMap1T	map_analog_state[] = {
+		{VT_VAR,	"state",	VT_UINT,
+			"Control current state", NULL},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+	VtHpiDataMap1T	map_stream_state[] = {
+		{VT_VAR,	"repeat",	VT_BOOLEAN,
+			"Control repeat flag",	vt_convert_boolean},
+		{VT_VAR,	"state",	VT_BUFFER,
+			"Control current state", NULL},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+	VtHpiDataMap1T	map_text_state[] = {
+		{VT_VAR,	"line",		VT_UINT,
+			"Control current line", NULL},
+		{VT_VAR,	"state",	VT_BUFFER,
+			"Control current state", NULL},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+	VtHpiDataMap1T	map_oem_state[] = {
+		{VT_VAR,	"state",	VT_BUFFER,
+			"Control current state", NULL},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+
+	VtHpiDataMap1T map_mode[] = {
+		{VT_VAR,	"mode",		VT_UINT,
+			"Control current mode", vt_convert_ctrl_mode},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+
+
+	*state = NULL;
+	*mode = NULL;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting control failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_CTRL_RDR) {
+		VOH_ERROR(err, "Getting control failed", -1);
+		return FALSE;
+	}
+
+	control = rdr.RdrTypeUnion.CtrlRec;
+
+	rv = saHpiControlGet(sid, rid, control.Num, &h_mode, &h_state);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting control failed", rv);
+		return FALSE;
+	}
+
+	switch (control.Type) {
+	case SAHPI_CTRL_TYPE_DIGITAL:
+		map = map_digital_state;
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control state",
+				map);
+		vt_data_value_set1(data, "state",
+				h_state.StateUnion.Digital);
+		break;
+	case SAHPI_CTRL_TYPE_DISCRETE:
+		map = map_discrete_state;
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control state",
+				map);
+		vt_data_value_set1(data, "state",
+				h_state.StateUnion.Discrete);
+		break;
+	case SAHPI_CTRL_TYPE_ANALOG:
+		map = map_analog_state;
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control state",
+				map);
+		vt_data_value_set1(data, "state",
+				h_state.StateUnion.Analog);
+		break;
+	case SAHPI_CTRL_TYPE_STREAM:
+		map = map_stream_state;
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control state",
+				map);
+		memcpy(name, h_state.StateUnion.Stream.Stream,
+				 h_state.StateUnion.Stream.StreamLength);
+		name[h_state.StateUnion.Stream.StreamLength] = '\0';
+		vt_data_value_str_set1(data, "state", name);
+		vt_data_value_set1(data, "repeat",
+					h_state.StateUnion.Stream.Repeat);
+		break;
+	case SAHPI_CTRL_TYPE_TEXT:
+		map = map_text_state;
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control state",
+				map);
+		vt_data_value_set1(data, "line",
+				h_state.StateUnion.Text.Line);
+		fixstr(&h_state.StateUnion.Text.Text, name);
+		vt_data_value_str_set1(data, "state", name);
+		break;
+	case SAHPI_CTRL_TYPE_OEM:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control state",
+				map_oem_state);
+		memcpy(name, h_state.StateUnion.Oem.Body,
+				    h_state.StateUnion.Oem.BodyLength);
+		name[h_state.StateUnion.Oem.BodyLength] = '\0';
+		vt_data_value_str_set1(data, "state", name);
+		break;
+	default:
+		return FALSE;
+	}
+
+	*state = data;
+
+	data = vt_data_element_new_by_array1(VT_UNSPECIFIED, VT_UNSPECIFIED,
+			NULL, "Control mode", map_mode);
+	vt_data_value_set1(data, "mode", h_mode);
+
+	*mode = data;
+
+	return TRUE;
+}
+
+GtkListStore *voh_get_ctrl_digital_state_list(void)
+{
+	GtkListStore	*store;
+	GtkTreeIter	iter;
+
+	store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_UINT);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vohCtrlStateDigital2String(SAHPI_CTRL_STATE_OFF),
+			   1, SAHPI_CTRL_STATE_OFF, 
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vohCtrlStateDigital2String(SAHPI_CTRL_STATE_ON),
+			   1, SAHPI_CTRL_STATE_ON, 
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vohCtrlStateDigital2String(
+				   SAHPI_CTRL_STATE_PULSE_OFF),
+			   1, SAHPI_CTRL_STATE_PULSE_OFF,
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vohCtrlStateDigital2String(
+				   SAHPI_CTRL_STATE_PULSE_ON),
+			   1, SAHPI_CTRL_STATE_PULSE_ON,
+			   -1);
+
+	return store;
+}
+
+GtkListStore *voh_get_ctrl_mode_list(void)
+{
+	GtkListStore	*store;
+	GtkTreeIter	iter;
+
+	store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_UINT);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vohCtrlMode2String(SAHPI_CTRL_MODE_AUTO),
+			   1, SAHPI_CTRL_MODE_AUTO, 
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vohCtrlMode2String(SAHPI_CTRL_MODE_MANUAL),
+			   1, SAHPI_CTRL_MODE_MANUAL, 
+			   -1);
+
+	return store;
+}
+
+gboolean voh_control_type_get(guint sessionid,
+			      guint resourceid,
+			      guint rdrentryid,
+			      VtData1T **ctrltype,
+			      gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiCtrlRecT		control;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	VtData1T		*data = NULL;
+	SaHpiCtrlTypeT		type;
+	VtHpiDataMap1T		map_ctrl_type[] = {
+		{VT_VAR,	"type",		VT_UINT,
+			"Control type", vt_convert_ctrl_type},
+		{0,		NULL,		0,	NULL,	NULL}
+	};
+
+	*ctrltype = NULL;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting control type failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_CTRL_RDR) {
+		VOH_ERROR(err, "Getting control type failed", -1);
+		return FALSE;
+	}
+
+	control = rdr.RdrTypeUnion.CtrlRec;
+
+	rv = saHpiControlTypeGet(sid, rid, control.Num, &type);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting control type failed", rv);
+		return FALSE;
+	}
+
+	data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Control type",
+				map_ctrl_type);
+	vt_data_value_set1(data, "type", (gdouble) type);
+	*ctrltype = data;
+
+	return TRUE;
+}
+
+gboolean voh_control_set(guint sessionid,
+			 guint resourceid,
+			 guint rdrentryid,
+			 VtData1T *mode_data,
+			 VtData1T *state_data,
+			 gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiCtrlRecT		control;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiCtrlModeT		mode;
+	SaHpiCtrlStateT		state;
+	gchar			*buffer;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Control setting failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_CTRL_RDR) {
+		VOH_ERROR(err, "Control setting failed", -1);
+		return FALSE;
+	}
+
+	control = rdr.RdrTypeUnion.CtrlRec;
+	state.Type = control.Type;
+
+	mode = vt_data_value_get_as_int(mode_data, "mode");
+
+	switch (control.Type) {
+	case VOH_CONTROL_DIGITAL:
+		state.StateUnion.Digital = vt_data_value_get_as_int(state_data,
+						"state");
+		break;
+	case VOH_CONTROL_DISCRETE:
+		state.StateUnion.Discrete = vt_data_value_get_as_int(state_data,
+						"state");
+		break;
+	case VOH_CONTROL_ANALOG:
+		state.StateUnion.Discrete = vt_data_value_get_as_int(state_data,
+						"state");
+		break;
+	case VOH_CONTROL_STREAM:
+		state.StateUnion.Stream.Repeat = vt_data_value_get_as_int(
+							state_data, "repeat");
+		state.StateUnion.Stream.StreamLength = vt_data_value_get_as_int(
+							state_data,
+							"stream_length");
+		g_stpcpy(state.StateUnion.Stream.Stream,
+				vt_data_value_str_get1(state_data, "stream"));
+		break;
+	case VOH_CONTROL_TEXT:
+		state.StateUnion.Text.Line = vt_data_value_get_as_int(
+							state_data, "line");
+		buffer = g_strdup(vt_data_value_str_get1(state_data,
+								"text.data"));
+		fillstr(&(state.StateUnion.Text.Text), buffer);
+		g_free(buffer);
+		break;
+	case VOH_CONTROL_OEM:
+		state.StateUnion.Oem.BodyLength = vt_data_value_get_as_int(
+							state_data,
+							"body_length");
+		g_stpcpy(state.StateUnion.Oem.Body,
+				vt_data_value_str_get1(state_data, "body"));
+		break;
+	default:
+		VOH_ERROR(err, "Setting control failed (unknown control type)",
+							-1);
+		return FALSE;
+	}
+
+	rv = saHpiControlSet(sid, rid, control.Num, mode, &state);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Control setting failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_watchdog_timer_get(guint sessionid,
+				guint resourceid,
+				guint rdrentryid,
+				VtData1T **watchdog_data,
+				gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiWatchdogRecT	watchdog;
+	SaHpiWatchdogT		watchdog_timer;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	VtData1T		*data = NULL;
+
+	*watchdog_data = NULL;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting watchdog timer failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_WATCHDOG_RDR) {
+		VOH_ERROR(err, "Getting watchdog timer failed", -1);
+		return FALSE;
+	}
+
+	watchdog = rdr.RdrTypeUnion.WatchdogRec;
+
+	rv = saHpiWatchdogTimerGet(sid, rid, watchdog.WatchdogNum,
+							&watchdog_timer);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting watchdog timer failed", rv);
+		return FALSE;
+	}
+
+	data = vt_data_new1(VT_WATCHDOG);
+	vt_data_value_set1(data, "log", watchdog_timer.Log);
+	vt_data_value_set1(data, "running", watchdog_timer.Running);
+	vt_data_value_set1(data, "timer_use", watchdog_timer.TimerUse);
+	vt_data_value_set1(data, "timer_action", watchdog_timer.TimerAction);
+	vt_data_value_set1(data, "pretimer_interrupt",
+					watchdog_timer.PretimerInterrupt);
+	vt_data_value_set1(data, "pre_timeout_interval",
+					watchdog_timer.PreTimeoutInterval);
+	vt_data_value_set1(data, "timer_use_exp_flags",
+					watchdog_timer.TimerUseExpFlags);
+	vt_data_value_set1(data, "initial_count", watchdog_timer.InitialCount);
+	vt_data_value_set1(data, "present_count", watchdog_timer.PresentCount);
+	*watchdog_data = data;
+
+	return TRUE;
+}
+
+GtkListStore *voh_get_watchdog_timer_use_list(void)
+{
+	GtkListStore	*store;
+	GtkTreeIter	iter;
+
+	store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_UINT);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_timer_use(
+				   SAHPI_WTU_NONE),
+			   1, SAHPI_WTU_NONE, 
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_timer_use(
+				   SAHPI_WTU_BIOS_FRB2),
+			   1, SAHPI_WTU_BIOS_FRB2, 
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_timer_use(
+				   SAHPI_WTU_BIOS_POST),
+			   1, SAHPI_WTU_BIOS_POST,
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_timer_use(
+				   SAHPI_WTU_OS_LOAD),
+			   1, SAHPI_WTU_OS_LOAD,
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_timer_use(
+				   SAHPI_WTU_SMS_OS),
+			   1, SAHPI_WTU_SMS_OS,
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_timer_use(
+				   SAHPI_WTU_OEM),
+			   1, SAHPI_WTU_OEM,
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_timer_use(
+				   SAHPI_WTU_UNSPECIFIED),
+			   1, SAHPI_WTU_UNSPECIFIED,
+			   -1);
+
+	return store;
+}
+
+GtkListStore *voh_get_watchdog_action_list(void)
+{
+	GtkListStore	*store;
+	GtkTreeIter	iter;
+
+	store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_UINT);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_action(
+				   SAHPI_WA_NO_ACTION),
+			   1, SAHPI_WA_NO_ACTION, 
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_action(
+				   SAHPI_WA_RESET),
+			   1, SAHPI_WA_RESET, 
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_action(
+				   SAHPI_WA_POWER_DOWN),
+			   1, SAHPI_WA_POWER_DOWN,
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_action(
+				   SAHPI_WA_POWER_CYCLE),
+			   1, SAHPI_WA_POWER_CYCLE,
+			   -1);
+
+	return store;
+}
+
+GtkListStore *voh_get_watchdog_pretimer_interrupt_list(void)
+{
+	GtkListStore	*store;
+	GtkTreeIter	iter;
+
+	store = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_UINT);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_pretimer_interrupt(
+				   SAHPI_WPI_NONE),
+			   1, SAHPI_WPI_NONE, 
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_pretimer_interrupt(
+				   SAHPI_WPI_SMI),
+			   1, SAHPI_WPI_SMI, 
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_pretimer_interrupt(
+				   SAHPI_WPI_NMI),
+			   1, SAHPI_WPI_NMI,
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_pretimer_interrupt(
+				   SAHPI_WPI_MESSAGE_INTERRUPT),
+			   1, SAHPI_WPI_MESSAGE_INTERRUPT,
+			   -1);
+	gtk_list_store_append(store, &iter);
+	gtk_list_store_set(store, &iter,
+			   0, vt_convert_watchdog_pretimer_interrupt(
+				   SAHPI_WPI_OEM),
+			   1, SAHPI_WPI_OEM,
+			   -1);
+
+	return store;
+}
+
+GList *voh_get_watchdog_exp_flags_list()
+{
+	GList		*list = NULL;
+	VtValNameMapT	*val_name;
+
+
+	val_name = g_malloc0(sizeof(VtValNameMapT));
+	list = g_list_append(list, val_name);
+	val_name->m_value = SAHPI_WATCHDOG_EXP_BIOS_FRB2;
+	val_name->m_name = g_strdup(vt_convert_watchdog_exp_flags(
+					SAHPI_WATCHDOG_EXP_BIOS_FRB2));
+
+	val_name = g_malloc0(sizeof(VtValNameMapT));
+	list = g_list_append(list, val_name);
+	val_name->m_value = SAHPI_WATCHDOG_EXP_BIOS_POST;
+	val_name->m_name = g_strdup(vt_convert_watchdog_exp_flags(
+					SAHPI_WATCHDOG_EXP_BIOS_POST));
+
+	val_name = g_malloc0(sizeof(VtValNameMapT));
+	list = g_list_append(list, val_name);
+	val_name->m_value = SAHPI_WATCHDOG_EXP_OS_LOAD;
+	val_name->m_name = g_strdup(vt_convert_watchdog_exp_flags(
+					SAHPI_WATCHDOG_EXP_OS_LOAD));
+
+	val_name = g_malloc0(sizeof(VtValNameMapT));
+	list = g_list_append(list, val_name);
+	val_name->m_value = SAHPI_WATCHDOG_EXP_SMS_OS;
+	val_name->m_name = g_strdup(vt_convert_watchdog_exp_flags(
+					SAHPI_WATCHDOG_EXP_SMS_OS));
+
+	val_name = g_malloc0(sizeof(VtValNameMapT));
+	list = g_list_append(list, val_name);
+	val_name->m_value = SAHPI_WATCHDOG_EXP_OEM;
+	val_name->m_name = g_strdup(vt_convert_watchdog_exp_flags(
+					SAHPI_WATCHDOG_EXP_OEM));
+
+	return list;
+}
+
+gboolean voh_watchdog_timer_set(guint sessionid,
+				guint resourceid,
+				guint rdrentryid,
+				VtData1T *watchdog_data,
+				gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiWatchdogRecT	watchdog_entry;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+	SaHpiWatchdogT		watchdog;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Watchdog timer setting failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_WATCHDOG_RDR) {
+		VOH_ERROR(err, "Watchdog timer setting failed", -1);
+		return FALSE;
+	}
+
+	watchdog_entry = rdr.RdrTypeUnion.WatchdogRec;
+
+	watchdog.Log = vt_data_value_get_as_int(watchdog_data, "log");
+	watchdog.Running = vt_data_value_get_as_int(watchdog_data, "running");
+	watchdog.TimerUse = vt_data_value_get_as_int(watchdog_data,
+							"timer_use");
+	watchdog.TimerAction = vt_data_value_get_as_int(watchdog_data,
+							"timer_action");
+	watchdog.PretimerInterrupt = vt_data_value_get_as_int(watchdog_data,
+							"pretimer_interrupt");
+	watchdog.PreTimeoutInterval = vt_data_value_get_as_int(watchdog_data,
+							"pre_timeout_interval");
+	watchdog.InitialCount = vt_data_value_get_as_int(watchdog_data,
+							"initial_count");
+	watchdog.TimerUseExpFlags = vt_data_value_get_as_int(watchdog_data,
+							"timer_use_exp_flags");
+
+	rv = saHpiWatchdogTimerSet(sid, rid, watchdog_entry.WatchdogNum,
+								&watchdog);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Watchdog timer setting failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_watchdog_timer_reset(guint sessionid,
+				  guint resourceid,
+				  guint rdrentryid,
+				  gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiRdrT		rdr;
+	SaHpiEntryIdT		nextentryid;
+	SaHpiWatchdogRecT	watchdog_entry;
+	SaHpiEntryIdT		rdrid = (SaHpiEntryIdT) rdrentryid;
+
+	rv = saHpiRdrGet(sid, rid, rdrid, &nextentryid, &rdr);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Watchdog timer reset failed", rv);
+		return FALSE;
+	}
+
+	if (rdr.RdrType != SAHPI_WATCHDOG_RDR) {
+		VOH_ERROR(err, "Watchdog timer reset failed", -1);
+		return FALSE;
+	}
+
+	watchdog_entry = rdr.RdrTypeUnion.WatchdogRec;
+
+	rv = saHpiWatchdogTimerReset(sid, rid, watchdog_entry.WatchdogNum);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Watchdog timer reset failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_domain_info_get(guint sessionid,
+			      VtData1T **domain_data,
+			      gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiDomainInfoT	domain_info;
+	VtData1T		*data = NULL;
+	gchar			name[1024];
+
+	*domain_data = NULL;
+
+	rv = saHpiDomainInfoGet(sid, &domain_info);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting domain info failed", rv);
+		return FALSE;
+	}
+
+	data = vt_data_new1(VT_DOMAIN_INFO);
+	vt_data_value_set1(data, "domain_id", domain_info.DomainId);
+	vt_data_value_set1(data, "domain_capabilities",
+					domain_info.DomainCapabilities);
+	vt_data_value_set1(data, "is_peer", domain_info.IsPeer);
+	vt_data_value_set1(data, "drt_update_count",
+					domain_info.DrtUpdateCount);
+	vt_data_value_set1(data, "drt_update_timestamp",
+					domain_info.DrtUpdateTimestamp);
+	vt_data_value_set1(data, "rpt_update_count",
+					domain_info.RptUpdateCount);
+	vt_data_value_set1(data, "rpt_update_timestamp",
+					domain_info.RptUpdateTimestamp);
+	vt_data_value_set1(data, "dat_update_count",
+					domain_info.DatUpdateCount);
+	vt_data_value_set1(data, "dat_update_timestamp",
+					domain_info.DatUpdateTimestamp);
+
+	vt_data_value_set1(data, "active_alarms",
+					domain_info.ActiveAlarms);
+	vt_data_value_set1(data, "critical_alarms",
+					domain_info.CriticalAlarms);
+	vt_data_value_set1(data, "major_alarms",
+					domain_info.MajorAlarms);
+	vt_data_value_set1(data, "minor_alarms",
+					domain_info.MinorAlarms);
+	vt_data_value_set1(data, "dat_user_alarm_limit",
+					domain_info.DatUserAlarmLimit);
+	vt_data_value_set1(data, "dat_overflow",
+					domain_info.DatOverflow);
+	fixstr(&domain_info.DomainTag, name);
+	vt_data_value_str_set1(data, "domain_tag", name);
+
+	*domain_data = data;
+
+	return TRUE;
+}
+
+gboolean voh_domain_tag_set(guint sessionid,
+			    VtData1T *tag_data,
+			    gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiTextBufferT	txt_buf;
+	gchar			name[1024];
+
+	fillstr(&txt_buf, vt_data_value_str_get1(tag_data, "data"));
+
+	rv = saHpiDomainTagSet(sid, &txt_buf);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting domain tag failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_alarm_get_next(guint sessionid,
+			    guint severity,
+			    gboolean unack_only,
+			    VtData1T *alarm_data,
+			    gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiAlarmT		alarm;
+	VtData1T		*data = NULL;
+	gint			val;
+	gchar			name[1024];
+
+	if (alarm_data == NULL) {
+		VOH_ERROR(err, "\"alarm get next\" failed (invalid arguments)",
+				rv);
+		return FALSE;
+	}
+
+	data = alarm_data;
+
+	val = vt_data_value_get_as_int(alarm_data, "alarm_id");
+	alarm.AlarmId = val;
+	val = vt_data_value_get_as_int(alarm_data, "severity");
+	alarm.Severity = val;
+	rv = saHpiAlarmGetNext(sid, (SaHpiSeverityT) severity,
+				(SaHpiBoolT) unack_only, &alarm);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "\"alarm get next\" failed", rv);
+		return FALSE;
+	}
+
+	vt_data_value_set1(data, "alarm_id", alarm.AlarmId);
+	vt_data_value_set1(data, "timestamp", alarm.Timestamp);
+	vt_data_value_set1(data, "severity", alarm.Severity);
+	vt_data_value_set1(data, "acknowledged", alarm.Acknowledged);
+	vt_data_value_set1(data, "alarm_cond.type", alarm.AlarmCond.Type);
+	vohFullEntityPath2String(&alarm.AlarmCond.Entity, name);
+	vt_data_value_str_set1(data, "alarm_cond.entity", name);
+	vt_data_value_set1(data, "alarm_cond.domain_id",
+					alarm.AlarmCond.DomainId);
+	vt_data_value_set1(data, "alarm_cond.resource_id",
+					alarm.AlarmCond.ResourceId);
+	vt_data_value_set1(data, "alarm_cond.sensor_num",
+					alarm.AlarmCond.SensorNum);
+
+	vt_data_value_set1(data, "alarm_cond.event_state",
+					alarm.AlarmCond.EventState);
+	memcpy(name, alarm.AlarmCond.Name.Value,
+				 alarm.AlarmCond.Name.Length);
+		name[alarm.AlarmCond.Name.Length] = '\0';
+	vt_data_value_str_set1(data, "alarm_cond.name", name);
+	vt_data_value_set1(data, "alarm_cond.mid", alarm.AlarmCond.Mid);
+	fixstr(&alarm.AlarmCond.Data, name);
+	vt_data_value_str_set1(data, "alarm_cond.data", name);
+
+	return TRUE;
+}
+
+gboolean voh_alarm_get(guint sessionid,
+		       guint entryid,
+		       VtData1T **alarm_data,
+		       gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiAlarmT		alarm;
+	VtData1T		*data = NULL;
+	gchar			name[1024];
+
+	if (alarm_data == NULL) {
+		VOH_ERROR(err, "\"alarm get\" failed (invalid arguments)",
+				rv);
+		return FALSE;
+	}
+
+	*alarm_data = NULL;
+
+	rv = saHpiAlarmGet(sid, (SaHpiAlarmIdT) entryid, &alarm);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "\"alarm \" failed", rv);
+		return FALSE;
+	}
+
+	data = vt_data_new1(VT_ALARM);
+	vt_data_value_set1(data, "alarm_id", alarm.AlarmId);
+	vt_data_value_set1(data, "timestamp", alarm.Timestamp);
+	vt_data_value_set1(data, "severity", alarm.Severity);
+	vt_data_value_set1(data, "acknowledged", alarm.Acknowledged);
+	vt_data_value_set1(data, "alarm_cond.type", alarm.AlarmCond.Type);
+	vohFullEntityPath2String(&alarm.AlarmCond.Entity, name);
+	vt_data_value_str_set1(data, "alarm_cond.entity", name);
+	vt_data_value_set1(data, "alarm_cond.domain_id",
+					alarm.AlarmCond.DomainId);
+	vt_data_value_set1(data, "alarm_cond.resource_id",
+					alarm.AlarmCond.ResourceId);
+	vt_data_value_set1(data, "alarm_cond.sensor_num",
+					alarm.AlarmCond.SensorNum);
+
+	vt_data_value_set1(data, "alarm_cond.event_state",
+					alarm.AlarmCond.EventState);
+	memcpy(name, alarm.AlarmCond.Name.Value,
+				 alarm.AlarmCond.Name.Length);
+		name[alarm.AlarmCond.Name.Length] = '\0';
+	vt_data_value_str_set1(data, "alarm_cond.name", name);
+	vt_data_value_set1(data, "alarm_cond.mid", alarm.AlarmCond.Mid);
+	fixstr(&alarm.AlarmCond.Data, name);
+	vt_data_value_str_set1(data, "alarm_cond.data", name);
+
+	*alarm_data = data;
+
+	return TRUE;
+}
+
+GList *voh_get_all_alarms(guint sessionid,
+			  gchar *err)
+{
+	gboolean		res;
+	guint			entryid;
+	VtData1T		*data = NULL;
+	GList			*alarm_list = NULL;
+
+	entryid = SAHPI_FIRST_ENTRY;
+	while (entryid != SAHPI_LAST_ENTRY) {
+		data = vt_data_new1(VT_ALARM);
+		vt_data_value_set1(data, "alarm_id", entryid);
+		vt_data_value_set1(data, "timestamp", 0);
+		res = voh_alarm_get_next(sessionid, SAHPI_ALL_SEVERITIES, FALSE,
+						data, err);
+		if (res == FALSE) {
+			vt_data_destroy1(data);
+			break;
+		}
+		alarm_list = g_list_append(alarm_list, (gpointer) data);
+		entryid = vt_data_value_get_as_int(data, "alarm_id");
+	}
+
+	return alarm_list;
+}
+
+gboolean voh_event_log_time_get(guint sessionid,
+				gint resourceid,
+				gfloat *time,
+				gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+
+	if (time == NULL) {
+		VOH_ERROR(err,
+			"\"event log time get\" failed (invalid arguments)", -1);
+		return FALSE;
+	}
+
+	rv = saHpiEventLogTimeGet(sid, rid, (SaHpiTimeT *) time);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "\"event log time get\" failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_event_log_time_set(guint sessionid,
+				gint resourceid,
+				gfloat time,
+				gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+
+	rv = saHpiEventLogTimeSet(sid, rid, (SaHpiTimeT) time);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "\"event log time set\" failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_event_log_info_get(guint sessionid,
+				guint resourceid,
+				VtData1T **evlog_data,
+				gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiEventLogInfoT	evlog_info;
+	VtData1T		*data = NULL;
+	gchar			name[1024];
+
+	*evlog_data = NULL;
+
+	rv = saHpiEventLogInfoGet(sid, rid, &evlog_info);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting event log info failed", rv);
+		return FALSE;
+	}
+
+	data = vt_data_new1(VT_EVENT_LOG_INFO);
+	vt_data_value_set1(data, "entries", evlog_info.Entries);
+	vt_data_value_set1(data, "size",
+					evlog_info.Size);
+	vt_data_value_set1(data, "user_event_max_size",
+					evlog_info.UserEventMaxSize);
+	vt_data_value_set1(data, "update_timestamp",
+					evlog_info.UpdateTimestamp);
+	vt_data_value_set1(data, "current_time",
+					evlog_info.CurrentTime);
+	vt_data_value_set1(data, "enabled",
+					evlog_info.Enabled);
+	vt_data_value_set1(data, "overflow_flag",
+					evlog_info.OverflowFlag);
+	vt_data_value_set1(data, "overflow_resetable",
+					evlog_info.OverflowResetable);
+	vt_data_value_set1(data, "overflow_action",
+					evlog_info.OverflowAction);
+
+	*evlog_data = data;
+
+	return TRUE;
+}
+
+gboolean voh_event_log_state_set(guint sessionid,
+				 guint resourceid,
+				 gboolean enabled,
+				 gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+
+
+	rv = saHpiEventLogStateSet(sid, rid, enabled);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Setting event log enable state failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_event_log_clear(guint sessionid,
+			     guint resourceid,
+			     gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+
+
+	rv = saHpiEventLogClear(sid, rid);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Event log clear failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+gboolean voh_event_log_overflow_reset(guint sessionid,
+				      guint resourceid,
+				      gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+
+
+	rv = saHpiEventLogOverflowReset(sid, rid);
+
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Event log overflow reset failed", rv);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+GList *voh_get_evlog_entries(guint sessionid,
+			     gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiEventLogEntryIdT	entryid,	prev_entryid,	next_entryid;
+	SaHpiEventLogEntryT	evlog_entry;
+	VtData1T		*data = NULL;
+	GList			*evlog_list = NULL;
+
+	entryid = SAHPI_OLDEST_ENTRY;
+	while (entryid != SAHPI_NO_MORE_ENTRIES) {
+		rv = saHpiEventLogEntryGet(sessionid, -1, entryid,
+				&prev_entryid, &next_entryid, &evlog_entry,
+				NULL, NULL);
+		if (rv != SA_OK) {
+			break;
+		}
+		data = vt_data_new1(VT_EVENT_LOG_ENTRY);
+		vt_data_value_set1(data, "entry_id", evlog_entry.EntryId);
+		vt_data_value_set1(data, "timestamp", evlog_entry.Timestamp);
+		vt_data_value_set1(data, "event.source",
+					evlog_entry.Event.Source);
+		vt_data_value_set1(data, "event.event_type",
+					evlog_entry.Event.EventType);
+		vt_data_value_set1(data, "event.severity",
+					evlog_entry.Event.Severity);
+
+		evlog_list = g_list_append(evlog_list, (gpointer) data);
+		entryid = next_entryid;
+	}
+
+	return evlog_list;
+}
+
+gboolean voh_get_evlog_entry_info(guint sessionid,
+				  guint resourceid,
+				  guint entryid,
+				  VtData1T **entry_data,
+				  gchar *err)
+{
+	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
+	SaHpiSessionIdT		sid = (SaHpiSessionIdT) sessionid;
+	SaHpiEventLogEntryIdT	enid = (SaHpiEventLogEntryIdT) entryid;
+	SaHpiEventLogEntryIdT	prev_entryid,	next_entryid;
+	SaHpiEventLogEntryT	evlog_info;
+	SaHpiEventUnionT	event;
+	VtData1T		*data = NULL;
+	gchar			name[1024];
+
+	static VtHpiDataMap1T resource_event_map[] = {
+	{VT_VAR,	"timestamp",		VT_TIME,
+			"Event timestamp",	NULL},
+	{VT_VAR,	"severity",		VT_UINT,
+			"Event severity",	vt_convert_severity},
+	{VT_VAR,	"source",		VT_INT,
+			"Source resource id",	NULL},
+	{VT_VAR,	"event_type",		VT_UINT,
+			"Event type",		vt_convert_resource_event_type},
+	{0,		NULL,			0,	NULL,	NULL}
+	};
+
+	static VtHpiDataMap1T domain_event_map[] = {
+	{VT_VAR,	"timestamp",		VT_TIME,
+			"Event timestamp",	NULL},
+	{VT_VAR,	"severity",		VT_UINT,
+			"Event severity",	vt_convert_severity},
+	{VT_VAR,	"source",		VT_INT,
+			"Source resource id",	NULL},
+	{VT_VAR,	"event_type",		VT_UINT,
+			"Event type",		vt_convert_domain_event_type},
+	{0,		NULL,			0,	NULL,	NULL}
+	};
+
+	static VtHpiDataMap1T sensor_event_map[] = {
+	{VT_VAR,	"timestamp",		VT_TIME,
+			"Event timestamp",	NULL},
+	{VT_VAR,	"severity",		VT_UINT,
+			"Event severity",	vt_convert_severity},
+	{VT_VAR,	"source",		VT_INT,
+			"Source resource id",	NULL},
+	{VT_VAR,	"sensor_num",		VT_UINT,
+			"Sensor number",	NULL},
+	{VT_VAR,	"sensor_type",		VT_UINT,
+			"Sensor type",		vt_convert_sensor_type},
+	{VT_VAR,	"assertion",		VT_BOOLEAN,
+			"Asserted event state",	vt_convert_boolean},
+	{0,		NULL,			0,	NULL,	NULL}
+	};
+	static VtHpiDataMap1T hotswap_event_map[] = {
+	{VT_VAR,	"timestamp",		VT_TIME,
+			"Event timestamp",	NULL},
+	{VT_VAR,	"severity",		VT_UINT,
+			"Event severity",	vt_convert_severity},
+	{VT_VAR,	"source",		VT_INT,
+			"Source resource id",	NULL},
+	{VT_VAR,	"hot_swap_state",	VT_UINT,
+			"Hot swap state",	vt_convert_hs_state},
+	{VT_VAR,	"previos_hot_swap_state",VT_UINT,
+			"Previous hot swap state",vt_convert_hs_state},
+	{0,		NULL,			0,	NULL,	NULL}
+	};
+
+	static VtHpiDataMap1T sensorenable_event_map[] = {
+	{VT_VAR,	"timestamp",		VT_TIME,
+			"Event timestamp",	NULL},
+	{VT_VAR,	"severity",		VT_UINT,
+			"Event severity",	vt_convert_severity},
+	{VT_VAR,	"source",		VT_INT,
+			"Source resource id",	NULL},
+	{VT_VAR,	"sensor_num",		VT_UINT,
+			"Sensor number",	NULL},
+	{VT_VAR,	"sensor_type",		VT_UINT,
+			"Sensor type",		vt_convert_sensor_type},
+	{VT_VAR,	"sensor_enable",	VT_BOOLEAN,
+			"Sensor enable state",	vt_convert_boolean},
+	{VT_VAR,	"sensor_event_enable",	VT_BOOLEAN,
+			"Sensor event enable state",
+						vt_convert_boolean},
+	{0,		NULL,			0,	NULL,	NULL}
+	};
+
+	static VtHpiDataMap1T watchdog_event_map[] = {
+	{VT_VAR,	"timestamp",		VT_TIME,
+			"Event timestamp",	NULL},
+	{VT_VAR,	"severity",		VT_UINT,
+			"Event severity",	vt_convert_severity},
+	{VT_VAR,	"source",		VT_INT,
+			"Source resource id",	NULL},
+	{VT_VAR,	"watchdog_num",		VT_UINT,
+			"Watchdog number",	NULL},
+	{VT_VAR,	"watchdog_action",	VT_UINT,
+			"Watchdog action event",
+				vt_convert_watchdog_action_event},
+	{VT_VAR,	"watchdog_pre_timer_action",VT_UINT,
+			"Watchdog pretimer action",
+				vt_convert_watchdog_pretimer_interrupt},
+	{VT_VAR,	"watchdog_use",		VT_UINT,
+			"Watchdog timer use",	vt_convert_watchdog_timer_use},
+	{0,		NULL,			0,	NULL,	NULL}
+	};
+
+	static VtHpiDataMap1T hpisw_event_map[] = {
+	{VT_VAR,	"timestamp",		VT_TIME,
+			"Event timestamp",	NULL},
+	{VT_VAR,	"severity",		VT_UINT,
+			"Event severity",	vt_convert_severity},
+	{VT_VAR,	"source",		VT_INT,
+			"Source resource id",	NULL},
+	{VT_VAR,	"mid",			VT_UINT,
+			"Manufacturer Id",	NULL},
+	{VT_VAR,	"type",			VT_UINT,
+			"HPI sofware event type",vt_convert_hpi_sw_event_type},
+	{VT_VAR,	"event_data",		VT_BUFFER,
+			"Event data",		NULL},
+	{0,		NULL,			0,	NULL,	NULL}
+	};
+
+	static VtHpiDataMap1T oem_event_map[] = {
+	{VT_VAR,	"timestamp",		VT_TIME,
+			"Event timestamp",	NULL},
+	{VT_VAR,	"severity",		VT_UINT,
+			"Event severity",	vt_convert_severity},
+	{VT_VAR,	"source",		VT_INT,
+			"Source resource id",	NULL},
+	{VT_VAR,	"mid",			VT_UINT,
+			"Manufacturer Id",	NULL},
+	{VT_VAR,	"oem_event_data",	VT_BUFFER,
+			"Event data",		NULL},
+	{0,		NULL,			0,	NULL,	NULL}
+	};
+
+	static VtHpiDataMap1T user_event_map[] = {
+	{VT_VAR,	"timestamp",		VT_TIME,
+			"Event timestamp",	NULL},
+	{VT_VAR,	"severity",		VT_UINT,
+			"Event severity",	vt_convert_severity},
+	{VT_VAR,	"source",		VT_INT,
+			"Source resource id",	NULL},
+	{VT_VAR,	"user_event_data",	VT_BUFFER,
+			"Event data",		NULL},
+	{0,		NULL,			0,	NULL,	NULL}
+	};
+
+	*entry_data = NULL;
+
+	rv = saHpiEventLogEntryGet(sid, rid, enid,
+				&prev_entryid, &next_entryid, &evlog_info,
+				NULL, NULL);
+	if (rv != SA_OK) {
+		VOH_ERROR(err, "Getting event log entry info failed", rv);
+		return FALSE;
+	}
+
+	event = evlog_info.Event.EventDataUnion;
+
+	switch (evlog_info.Event.EventType) {
+	case SAHPI_ET_RESOURCE:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Event log entry info",
+				resource_event_map);
+		vt_data_value_set1(data, "event_type",
+					event.ResourceEvent.ResourceEventType);
+		break;
+	case SAHPI_ET_DOMAIN:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Event log entry info",
+				domain_event_map);
+		vt_data_value_set1(data, "event_type",
+					event.DomainEvent.Type);
+		break;
+	case SAHPI_ET_SENSOR:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Event log entry info",
+				sensor_event_map);
+		vt_data_value_set1(data, "sensor_num",
+					event.SensorEvent.SensorNum);
+		vt_data_value_set1(data, "sensor_type",
+					event.SensorEvent.SensorType);
+		vt_data_value_set1(data, "assertion",
+					event.SensorEvent.Assertion);
+		break;
+	case SAHPI_ET_SENSOR_ENABLE_CHANGE:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Event log entry info",
+				sensorenable_event_map);
+		vt_data_value_set1(data, "sensor_num",
+				event.SensorEnableChangeEvent.SensorNum);
+		vt_data_value_set1(data, "sensor_type",
+				event.SensorEnableChangeEvent.SensorType);
+		vt_data_value_set1(data, "sensor_enable",
+				event.SensorEnableChangeEvent.SensorEnable);
+		vt_data_value_set1(data, "sensor_event_enable",
+				event.SensorEnableChangeEvent.SensorEventEnable);
+		break;
+	case SAHPI_ET_HOTSWAP:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Event log entry info",
+				hotswap_event_map);
+		vt_data_value_set1(data, "hot_swap_state",
+				event.HotSwapEvent.HotSwapState);
+		vt_data_value_set1(data, "previous_hot_swap_state",
+				event.HotSwapEvent.PreviousHotSwapState);
+		break;
+	case SAHPI_ET_WATCHDOG:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Event log entry info",
+				watchdog_event_map);
+		vt_data_value_set1(data, "watchdog_num",
+				event.WatchdogEvent.WatchdogNum);
+		vt_data_value_set1(data, "watchdog_action",
+				event.WatchdogEvent.WatchdogAction);
+		vt_data_value_set1(data, "watchdog_pre_timer_action",
+				event.WatchdogEvent.WatchdogPreTimerAction);
+		vt_data_value_set1(data, "watchdog_use",
+				event.WatchdogEvent.WatchdogUse);
+		break;
+	case SAHPI_ET_HPI_SW:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Event log entry info",
+				hpisw_event_map);
+		vt_data_value_set1(data, "mid",
+				event.HpiSwEvent.MId);
+		vt_data_value_set1(data, "type",
+				event.HpiSwEvent.Type);
+		fixstr(&event.HpiSwEvent.EventData, name);
+		vt_data_value_str_set1(data, "event_data", name);
+		break;
+	case SAHPI_ET_OEM:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Event log entry info",
+				oem_event_map);
+		vt_data_value_set1(data, "mid",
+				event.OemEvent.MId);
+		fixstr(&event.OemEvent.OemEventData, name);
+		vt_data_value_str_set1(data, "oem_event_data", name);
+		break;
+	case SAHPI_ET_USER:
+		data = vt_data_element_new_by_array1(VT_UNSPECIFIED,
+				VT_UNSPECIFIED, NULL, "Event log entry info",
+				user_event_map);
+		fixstr(&event.UserEvent.UserEventData, name);
+		vt_data_value_str_set1(data, "user_event_data", name);
+		break;
+	}
+
+	vt_data_value_set1(data, "timestamp", evlog_info.Timestamp);
+	vt_data_value_set1(data, "severity",
+					evlog_info.Event.Severity);
+	vt_data_value_set1(data, "source", evlog_info.Event.Source);
+
+	*entry_data = data;
+
+	return TRUE;
+}
