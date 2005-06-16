@@ -635,6 +635,229 @@ void hview_get_events_call(GtkWidget *widget, gpointer data)
 //	    g_object_unref(events);
 }
 
+gint hview_parm_ctrl_restore_thread(gpointer data)
+{
+	HviewWidgetsT		*w = (HviewWidgetsT *) data;
+	GtkTreeModel		*store;
+	GtkTreeSelection	*selection;
+	GtkTreeIter		iter;
+	guint			id;
+	gint			res;
+	GtkWidget		*tview;
+	gint			page;
+	guint			sid;
+	gchar			err[100];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return FALSE;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return FALSE;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	gtk_tree_selection_get_selected(selection, &store, &iter);
+	gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+	res = voh_parm_control(sid, id, 2, err);
+	if (res == FALSE) {
+		hview_print(w, err);
+		hview_statusbar_push(w,
+				"restoring resource parameters failed");
+	} else {
+		hview_statusbar_push(w, "ready");
+	}
+
+	gtk_widget_set_sensitive(w->main_window, TRUE);
+
+	return FALSE;
+}
+
+
+
+void hview_parm_ctrl_restore_call(GtkWidget *widget, gpointer data)
+{
+	HviewWidgetsT		*w = (HviewWidgetsT *) data;
+	GtkWidget		*tview;
+	GtkTreeModel		*model;
+	GtkTreeIter		iter;
+	guint			type;
+	GtkTreeSelection	*selection;
+	gint			page;
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gtk_tree_model_get(model, &iter,
+				   VOH_LIST_COLUMN_TYPE, &type, -1);
+		if (type == VOH_ITER_IS_RPT) {
+			hview_statusbar_push(w,
+			"saving resource parameters (please wait)");
+			gtk_widget_set_sensitive(w->main_window, FALSE);
+			gtk_timeout_add(100, hview_parm_ctrl_restore_thread,
+									data);
+		}
+      }
+}
+
+gint hview_parm_ctrl_save_thread(gpointer data)
+{
+	HviewWidgetsT		*w = (HviewWidgetsT *) data;
+	GtkTreeModel		*store;
+	GtkTreeSelection	*selection;
+	GtkTreeIter		iter;
+	guint			id;
+	gint			res;
+	GtkWidget		*tview;
+	gint			page;
+	guint			sid;
+	gchar			err[100];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return FALSE;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return FALSE;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	gtk_tree_selection_get_selected(selection, &store, &iter);
+	gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+	res = voh_parm_control(sid, id, 1, err);
+	if (res == FALSE) {
+		hview_print(w, err);
+		hview_statusbar_push(w,
+				"saving resource parameters failed");
+	} else {
+		hview_statusbar_push(w, "ready");
+	}
+
+	gtk_widget_set_sensitive(w->main_window, TRUE);
+
+	return FALSE;
+}
+
+void hview_parm_ctrl_save_call(GtkWidget *widget, gpointer data)
+{
+	HviewWidgetsT		*w = (HviewWidgetsT *) data;
+	GtkWidget		*tview;
+	GtkTreeModel		*model;
+	GtkTreeIter		iter;
+	guint			type;
+	GtkTreeSelection	*selection;
+	gint			page;
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gtk_tree_model_get(model, &iter,
+				   VOH_LIST_COLUMN_TYPE, &type, -1);
+		if (type == VOH_ITER_IS_RPT) {
+			hview_statusbar_push(w,
+			"saving resource parameters (please wait)");
+			gtk_widget_set_sensitive(w->main_window, FALSE);
+			gtk_timeout_add(100, hview_parm_ctrl_save_thread, data);
+		}
+      }
+}
+
+gint hview_parm_ctrl_default_thread(gpointer data)
+{
+	HviewWidgetsT		*w = (HviewWidgetsT *) data;
+	GtkTreeModel		*store;
+	GtkTreeSelection	*selection;
+	GtkTreeIter		iter;
+	guint			id;
+	gint			res;
+	GtkWidget		*tview;
+	gint			page;
+	guint			sid;
+	gchar			err[100];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return FALSE;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return FALSE;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	gtk_tree_selection_get_selected(selection, &store, &iter);
+	gtk_tree_model_get(store, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+	res = voh_parm_control(sid, id, 0, err);
+	if (res == FALSE) {
+		hview_print(w, err);
+		hview_statusbar_push(w,
+				"setting default resource parameters failed");
+	} else {
+		hview_statusbar_push(w, "ready");
+	}
+
+	gtk_widget_set_sensitive(w->main_window, TRUE);
+
+	return FALSE;
+}
+
+void hview_parm_ctrl_default_call(GtkWidget *widget, gpointer data)
+{
+	HviewWidgetsT		*w = (HviewWidgetsT *) data;
+	GtkWidget		*tview;
+	GtkTreeModel		*model;
+	GtkTreeIter		iter;
+	guint			type;
+	GtkTreeSelection	*selection;
+	gint			page;
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gtk_tree_model_get(model, &iter,
+				   VOH_LIST_COLUMN_TYPE, &type, -1);
+		if (type == VOH_ITER_IS_RPT) {
+			hview_statusbar_push(w,
+			"setting default resource parameters (please wait)");
+			gtk_widget_set_sensitive(w->main_window, FALSE);
+			gtk_timeout_add(100, hview_parm_ctrl_default_thread,
+									data);
+		}
+      }
+}
+
 gint hview_set_power_off_thread(gpointer data)
 {
 	HviewWidgetsT		*w = (HviewWidgetsT *) data;
@@ -4470,3 +4693,74 @@ gboolean hview_domain_alarm_selected_call(GtkTreeSelection *selection,
 
 	return TRUE;
 }
+
+gboolean hview_clear_domain_event_log_call(GtkWidget *widget,
+					   gpointer data)
+{
+	HviewDomainEvLogWidgetsT	*dw = (HviewDomainEvLogWidgetsT *) data;
+	HviewWidgetsT			*w = dw->parent_widgets;
+	GList				*childs_list;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter;
+	GtkTreeStore			*store;
+	guint				id;
+	gint				res;
+	gchar				err[1024];
+	GList				*var_val_l,	*evlog_list;
+	VtVarValT			*var_val;
+	VtData1T			*evlog_data;
+	GtkTreeSelection		*dom_sel;
+	gchar				name[1024];
+
+	childs_list = gtk_container_get_children(GTK_CONTAINER(
+						dw->evlog_tab.entryinfo_box));
+	while (childs_list != NULL) {
+		widget = GTK_WIDGET(childs_list->data);
+		gtk_container_remove(GTK_CONTAINER(dw->evlog_tab.entryinfo_box),
+					widget);
+		childs_list = childs_list->next;
+	}
+
+	gtk_tree_view_set_model(GTK_TREE_VIEW(dw->evlog_tab.evlog_view),
+				NULL);
+
+	dom_sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(w->domain_view));
+	res = gtk_tree_selection_get_selected(dom_sel, &model, &iter);
+	if (res == FALSE) {
+		return FALSE;
+	}
+
+	gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+	res = voh_event_log_clear(id, -1, err);
+
+	if (res == FALSE) {
+		hview_print(w, err);
+	}
+
+	evlog_list = voh_get_evlog_entries(id, err);
+
+	store = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
+                                 GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_UINT,
+                                 G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+
+	while (evlog_list != NULL) {
+		evlog_data = (VtData1T *) evlog_list->data;
+		gtk_tree_store_append(store, &iter, NULL);
+		id = vt_data_value_get_as_int(evlog_data, "entry_id");
+		sprintf(name, "%s event #%d", vt_data_value_str_get1(evlog_data,
+							"event.event_type"), id);
+		gtk_tree_store_set(store, &iter,
+				VOH_LIST_COLUMN_NAME, name,
+				VOH_LIST_COLUMN_ID, id,
+				-1);
+		evlog_list = evlog_list->next;
+	}
+
+	gtk_tree_view_set_model(GTK_TREE_VIEW(dw->evlog_tab.evlog_view),
+				GTK_TREE_MODEL(store));
+	g_object_unref(store);
+
+	return TRUE;
+}
+

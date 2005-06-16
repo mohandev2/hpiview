@@ -238,13 +238,16 @@ GtkWidget *hwidget_get_iter_popup(GtkTreeModel *store,
 	HviewWidgetsT	*w = (HviewWidgetsT *) data;
 	GtkWidget	*menu,	*smenu;
 	GtkWidget	*item,	*sitem;
-	guint		type;
+	guint		type,	id;
 	guint		capability;
 
 	if (store == NULL || iter == NULL)
 		return NULL;
 
-	gtk_tree_model_get(store, iter, VOH_LIST_COLUMN_TYPE, &type, -1);
+	gtk_tree_model_get(store, iter, VOH_LIST_COLUMN_TYPE, &type,
+			VOH_LIST_COLUMN_ID, &id,
+			VOH_LIST_COLUMN_CAPABILITY, &capability,
+			-1);
 
 	switch (type) {
 	case VOH_ITER_IS_DOMAIN:
@@ -275,9 +278,28 @@ GtkWidget *hwidget_get_iter_popup(GtkTreeModel *store,
 		
 		return menu;
 	case VOH_ITER_IS_RPT:
-		gtk_tree_model_get(store, iter,
-				   VOH_LIST_COLUMN_CAPABILITY, &capability, -1);
 		menu = gtk_menu_new();
+
+		if (capability & VOH_ITER_CAPABILITY_CONTROL) {
+			smenu = gtk_menu_new();
+			item = hwidget_get_menu_item(NULL, "parameters control",
+						     NULL, NULL);
+			gtk_container_add(GTK_CONTAINER(menu), item);
+			gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), smenu);
+
+			sitem = hwidget_get_menu_item(NULL,
+					"set default parameters",
+					hview_parm_ctrl_default_call, data);
+			gtk_container_add(GTK_CONTAINER(smenu), sitem);
+
+			sitem = hwidget_get_menu_item(NULL, "save parameters",
+					hview_parm_ctrl_save_call, data);
+			gtk_container_add(GTK_CONTAINER(smenu), sitem);
+
+			sitem = hwidget_get_menu_item(NULL, "restore parameters",
+					hview_parm_ctrl_restore_call, data);
+			gtk_container_add(GTK_CONTAINER(smenu), sitem);
+		}
 		if (capability & VOH_ITER_CAPABILITY_POWER) {
 			smenu = gtk_menu_new();
 			item = hwidget_get_menu_item("power.png", "power",

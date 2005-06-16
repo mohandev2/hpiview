@@ -61,6 +61,13 @@ void hview_switch_page_call(GtkNotebook *notebook,
 			    GtkNotebookPage *page,
 			    guint pagenum,
 			    gpointer data);
+
+gint hview_parm_ctrl_restore_thread(gpointer data);
+void hview_parm_ctrl_restore_call(GtkWidget *widget, gpointer data);
+gint hview_parm_ctrl_save_thread(gpointer data);
+void hview_parm_ctrl_save_call(GtkWidget *widget, gpointer data);
+gint hview_parm_ctrl_default_thread(gpointer data);
+void hview_parm_ctrl_default_call(GtkWidget *widget, gpointer data);
 void hview_set_power_off_call(GtkWidget *widget, gpointer data);
 void hview_set_power_on_call(GtkWidget *widget, gpointer data);
 void hview_set_power_cycle_call(GtkWidget *widget, gpointer data);
@@ -137,6 +144,8 @@ gboolean hview_domain_evlog_selected_call(GtkTreeSelection *selection,
 					  gpointer data);
 gboolean hview_domain_alarm_selected_call(GtkTreeSelection *selection,
 					  gpointer data);
+gboolean hview_clear_domain_event_log_call(GtkWidget *widget,
+					   gpointer data);
 
 #endif
 
