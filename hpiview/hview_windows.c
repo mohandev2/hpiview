@@ -1320,12 +1320,16 @@ GtkWidget *hview_get_domain_evlog_window(HviewDomainEvLogWidgetsT *w)
 	w->evlog_tab.add_evlog = gtk_button_new_with_label(" Add entry ");
 	gtk_box_pack_start(GTK_BOX(vbox1), w->evlog_tab.add_evlog,
 			   FALSE, FALSE, 5);
-	gtk_widget_set_sensitive(w->evlog_tab.add_evlog, FALSE);
+//	g_signal_connect(G_OBJECT(w->evlog_tab.add_evlog), "clicked",
+//			G_CALLBACK(hview_add_domain_evlog_entry_call),
+//			(gpointer) w);
 
-	w->evlog_tab.delete_evlog = gtk_button_new_with_label(" Delete entry ");
-	gtk_box_pack_start(GTK_BOX(vbox1), w->evlog_tab.delete_evlog,
+	w->evlog_tab.clear_evlog = gtk_button_new_with_label(" Clear log ");
+	gtk_box_pack_start(GTK_BOX(vbox1), w->evlog_tab.clear_evlog,
 			   FALSE, FALSE, 5);
-	gtk_widget_set_sensitive(w->evlog_tab.delete_evlog, FALSE);
+	g_signal_connect(G_OBJECT(w->evlog_tab.clear_evlog), "clicked",
+			G_CALLBACK(hview_clear_domain_event_log_call),
+			(gpointer) w);
 
 	frame = gtk_frame_new("Event log entry info");
 	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 0);

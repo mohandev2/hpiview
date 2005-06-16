@@ -335,6 +335,10 @@ static void voh_add_resource(GtkTreeStore *pstore, guint sessionid,
 		  } else
 			state |= VOH_ITER_RPT_STATE_RESET_DEASSERT;
 	    }
+
+	    if (rpt->ResourceCapabilities & SAHPI_CAPABILITY_CONTROL) {
+		  capability |= VOH_ITER_CAPABILITY_CONTROL;
+	    }
 	    gtk_tree_store_set(pstore, &iter,
 			       VOH_LIST_COLUMN_NAME, path,
 			       VOH_LIST_COLUMN_ID, id,
@@ -1165,6 +1169,23 @@ gboolean voh_get_power_state(guint domainid, guint resourceid,
       return TRUE;
 }
 */
+
+gboolean voh_parm_control(guint sessionid, guint resourceid,
+			  guint action, gchar *err)
+{
+      SaErrorT		rv;
+      SaHpiPowerStateT	power;
+      SaHpiSessionIdT	sid = (SaHpiSessionIdT)sessionid;
+      SaHpiResourceIdT	rid = (SaHpiResourceIdT)resourceid;
+
+      rv = saHpiParmControl(sid, rid, (SaHpiParmActionT) action);
+      if (rv != SA_OK) {
+	    VOH_ERROR(err, "Resource parameters setting failed", rv);
+	    return FALSE;
+      }
+
+      return TRUE;
+}
 
 gboolean voh_set_power_off(guint sessionid, guint resourceid,
 			   GtkTreeStore *store, gchar *err)
@@ -4523,7 +4544,7 @@ gboolean voh_get_evlog_entry_info(guint sessionid,
 			"Source resource id",	NULL},
 	{VT_VAR,	"hot_swap_state",	VT_UINT,
 			"Hot swap state",	vt_convert_hs_state},
-	{VT_VAR,	"previos_hot_swap_state",VT_UINT,
+	{VT_VAR,	"previous_hot_swap_state",VT_UINT,
 			"Previous hot swap state",vt_convert_hs_state},
 	{0,		NULL,			0,	NULL,	NULL}
 	};
