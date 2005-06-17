@@ -1238,7 +1238,7 @@ GtkWidget *hview_get_domain_evlog_window(HviewDomainEvLogWidgetsT *w)
 	GtkWidget	*win;
 	GtkCellRenderer	*renderer;
 
-	dialog = gtk_dialog_new_with_buttons("Domain event log",
+	dialog = gtk_dialog_new_with_buttons("Event log",
 					     GTK_WINDOW(pw->main_window),
 					     GTK_DIALOG_MODAL |
 					        GTK_DIALOG_DESTROY_WITH_PARENT,
@@ -1288,7 +1288,7 @@ GtkWidget *hview_get_domain_evlog_window(HviewDomainEvLogWidgetsT *w)
 							notebook), vbox, label);
 
 
-	frame = gtk_frame_new("Domain event log entries");
+	frame = gtk_frame_new("Event log entries");
 	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 5);
 
 	hbox = gtk_hbox_new(TRUE, 0);
@@ -1308,7 +1308,7 @@ GtkWidget *hview_get_domain_evlog_window(HviewDomainEvLogWidgetsT *w)
 	gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(
 						w->evlog_tab.evlog_view),
 						VOH_LIST_COLUMN_NAME,
-						"Domain event log entries",
+						"Event log entries",
 						renderer, "text",
 						VOH_LIST_COLUMN_NAME, NULL);
 	gtk_scrolled_window_add_with_viewport(GTK_SCROLLED_WINDOW(win),
@@ -1323,13 +1323,11 @@ GtkWidget *hview_get_domain_evlog_window(HviewDomainEvLogWidgetsT *w)
 //	g_signal_connect(G_OBJECT(w->evlog_tab.add_evlog), "clicked",
 //			G_CALLBACK(hview_add_domain_evlog_entry_call),
 //			(gpointer) w);
+	gtk_widget_set_sensitive(w->evlog_tab.add_evlog, FALSE);
 
 	w->evlog_tab.clear_evlog = gtk_button_new_with_label(" Clear log ");
 	gtk_box_pack_start(GTK_BOX(vbox1), w->evlog_tab.clear_evlog,
 			   FALSE, FALSE, 5);
-	g_signal_connect(G_OBJECT(w->evlog_tab.clear_evlog), "clicked",
-			G_CALLBACK(hview_clear_domain_event_log_call),
-			(gpointer) w);
 
 	frame = gtk_frame_new("Event log entry info");
 	gtk_box_pack_start(GTK_BOX(vbox), frame, TRUE, TRUE, 0);

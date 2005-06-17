@@ -44,6 +44,7 @@ const gchar *vt_convert_domain_event_type(guint type);
 const gchar *vt_convert_sensor_type(guint type);
 const gchar *vt_convert_hs_state(guint state);
 const gchar *vt_convert_hpi_sw_event_type(guint type);
+const gchar *vt_convert_event_category(guint category);
 
 
 const gchar *vt_convert_time(gfloat time);

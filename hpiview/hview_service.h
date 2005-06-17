@@ -230,7 +230,7 @@ typedef struct HviewDomainEvLogEntriesTab {
 	gint		tab_page_num;
 	GtkWidget	*evlog_view;
 	GtkWidget	*add_evlog;
-	GtkWidget	*delete_evlog;
+	GtkWidget	*clear_evlog;
 	GtkWidget	*entryinfo_box;
 } HviewDomainEvLogEntriesTabT;
 

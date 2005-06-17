@@ -1766,6 +1766,7 @@ void hview_sensor_settings_call(GtkWidget *widget, gpointer data)
 			gtk_box_pack_start(GTK_BOX(dw.threshold_tab.info_box),
 					   label, TRUE, TRUE, 10);
 			dw.threshold_tab.thrlist = NULL;
+			gtk_widget_show_all(dialog_window);
 		} else {
 			dw.threshold_tab.thrlist = sen_info;
 			while (sen_info != NULL) {
@@ -2189,6 +2190,7 @@ void hview_inventory_settings_call(GtkWidget *widget, gpointer data)
 		if (info == NULL) {
 			hview_print(w, err);
 			label = gtk_label_new("UNKNOWN");
+			gtk_widget_show_all(dialog_window);
 			gtk_box_pack_start(GTK_BOX(dw.general_tab.info_box),
 					   label, TRUE, TRUE, 0);
 		} else {
@@ -3385,6 +3387,7 @@ void hview_control_settings_call(GtkWidget *widget, gpointer data)
 			label = gtk_label_new("UNKNOWN");
 			gtk_box_pack_start(GTK_BOX(dw.general_tab.info_box),
 					   label, TRUE, TRUE, 0);
+			gtk_widget_show_all(dialog_window);
 		} else {
 			var_val_l = vt_get_var_val_list(info_data);
 			while (var_val_l != NULL) {
@@ -3418,6 +3421,7 @@ void hview_control_settings_call(GtkWidget *widget, gpointer data)
 			label = gtk_label_new("UNKNOWN");
 			gtk_box_pack_start(GTK_BOX(hbox),
 					   label, TRUE, TRUE, 0);
+			gtk_widget_show_all(dialog_window);
 		} else {
 			switch (ctrl_type) {
 			case VOH_CONTROL_DIGITAL:
@@ -4452,7 +4456,7 @@ void hview_domain_evlog_call(GtkWidget *widget, gpointer data)
 	vt_data_destroy1(evlog_data);
 
 
-	evlog_list = voh_get_evlog_entries(id, err);
+	evlog_list = voh_get_evlog_entries(id, -1, err);
 
 	store = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
                                  GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_UINT,
@@ -4482,6 +4486,10 @@ void hview_domain_evlog_call(GtkWidget *widget, gpointer data)
 //			(gpointer) &dw);
 	g_signal_connect(G_OBJECT(selection), "changed",
 			G_CALLBACK(hview_domain_evlog_selected_call),
+			(gpointer) &dw);
+
+	g_signal_connect(G_OBJECT(dw.evlog_tab.clear_evlog), "clicked",
+			G_CALLBACK(hview_clear_domain_event_log_call),
 			(gpointer) &dw);
 
 	gtk_widget_show_all(dialog_window);
@@ -4598,6 +4606,7 @@ gboolean hview_domain_evlog_selected_call(GtkTreeSelection *selection,
 		label = gtk_label_new("UNKNOWN");
 		gtk_box_pack_start(GTK_BOX(dw->evlog_tab.entryinfo_box),
 					label, TRUE, TRUE, 0);
+		gtk_widget_show_all(dw->evlog_tab.entryinfo_box);
 		return FALSE;
 	}
 
@@ -4671,6 +4680,7 @@ gboolean hview_domain_alarm_selected_call(GtkTreeSelection *selection,
 		label = gtk_label_new("UNKNOWN");
 		gtk_box_pack_start(GTK_BOX(dw->dat_tab.alarminfo_box),
 					label, TRUE, TRUE, 0);
+		gtk_widget_show_all(dw->dat_tab.alarminfo_box);
 		return FALSE;
 	}
 
@@ -4738,7 +4748,7 @@ gboolean hview_clear_domain_event_log_call(GtkWidget *widget,
 		hview_print(w, err);
 	}
 
-	evlog_list = voh_get_evlog_entries(id, err);
+	evlog_list = voh_get_evlog_entries(id, -1, err);
 
 	store = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
                                  GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_UINT,
@@ -4753,6 +4763,549 @@ gboolean hview_clear_domain_event_log_call(GtkWidget *widget,
 		gtk_tree_store_set(store, &iter,
 				VOH_LIST_COLUMN_NAME, name,
 				VOH_LIST_COLUMN_ID, id,
+				-1);
+		evlog_list = evlog_list->next;
+	}
+
+	gtk_tree_view_set_model(GTK_TREE_VIEW(dw->evlog_tab.evlog_view),
+				GTK_TREE_MODEL(store));
+	g_object_unref(store);
+
+	return TRUE;
+}
+
+void hview_sys_evlog_time_ok_response(gpointer data)
+{
+	HviewDomainEvLogTSWidgetsT	*dw = (HviewDomainEvLogTSWidgetsT *)
+									data;
+	HviewWidgetsT			*w = dw->parent_widgets;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter;
+	GtkTreeSelection		*selection;
+	GtkWidget			*tview;
+	gint				page;
+	guint				rid,	sid;
+	guint				year,	month,	day;
+	guint				hour,	min,	sec;
+	gint				res;
+	gdouble				time;
+	gchar				err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &rid, -1);
+	} else {
+		return;
+	}
+
+	gtk_calendar_get_date(GTK_CALENDAR(dw->calendar), &year, &month, &day);
+	hour = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(dw->hour));
+	min = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(dw->min));
+	sec = gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(dw->sec));
+	time = vt_dmyhms_to_time(year, month, day, hour, min, sec);
+
+	res = voh_event_log_time_set(sid, rid, time, err);
+
+	if (res == FALSE) {
+		hview_print(w, err);
+	}
+}
+
+void hview_sys_evlog_time_call(GtkWidget *widget, gpointer data)
+{
+	HviewWidgetsT			*w = (HviewWidgetsT *) data;
+	HviewDomainEvLogTSWidgetsT	dw;
+	GtkWidget			*dialog_window;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter;
+	GtkTreeSelection		*selection;
+	GtkWidget			*tview;
+	gint				page;
+	GtkWidget			*hbox;
+	GtkWidget			*label;
+	VtData1T			*domain_info;
+	GList				*var_val_l,	*alarm_list;
+	VtVarValT			*var_val;
+	guint				rid, sid;
+	guint				year,	month,	day;
+	guint				hour,	min,	sec;
+	gint				res;
+	gfloat				time;
+	gchar				err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &rid, -1);
+	} else {
+		return;
+	}
+
+	dw.parent_widgets = w;
+	dialog_window = hview_get_domain_evlogtime_window(&dw);
+	dw.dialog_window = dialog_window;
+
+	label = gtk_label_new("Current timestamp");
+	gtk_box_pack_start(GTK_BOX(dw.time_box), label, TRUE, TRUE, 5);
+
+	res = voh_event_log_time_get(sid, rid, &time, err);
+	if(res == FALSE) {
+		hview_print(w, err);
+		label = gtk_label_new("unknown");
+	} else {
+		label = gtk_label_new(vt_convert_time(time));
+		res = vt_get_dmyhms(time, &year, &month, &day, &hour,
+								&min, &sec);
+		if (res == TRUE) {
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dw.hour),
+									hour);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dw.min),
+									min);
+			gtk_spin_button_set_value(GTK_SPIN_BUTTON(dw.sec),
+									sec);
+			gtk_calendar_select_month(GTK_CALENDAR(dw.calendar),
+							month, year);
+			gtk_calendar_select_day(GTK_CALENDAR(dw.calendar),
+							day);
+		}
+	}
+	gtk_box_pack_start(GTK_BOX(dw.time_box), label, TRUE, TRUE, 5);
+
+	gtk_widget_show_all(dialog_window);
+	res = gtk_dialog_run(GTK_DIALOG(dialog_window));
+	switch (res) {
+	case GTK_RESPONSE_OK:
+		hview_sys_evlog_time_ok_response((gpointer) &dw);
+		break;
+	default:
+		break;
+	}
+
+	gtk_widget_destroy(dialog_window);
+	
+}
+
+void hview_sys_evlog_ok_response(gpointer data)
+{
+	HviewDomainEvLogWidgetsT	*dw = (HviewDomainEvLogWidgetsT *)
+									data;
+	HviewWidgetsT			*w = dw->parent_widgets;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter;
+	GtkTreeSelection		*selection;
+	GtkWidget			*tview;
+	gint				page;
+	guint				sid,	rid;
+	gint				res;
+	gchar				err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &rid, -1);
+	} else {
+		return;
+	}
+
+	res = voh_event_log_state_set(sid, rid,
+			gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(
+						dw->general_tab.enable_state)),
+			err);
+	if (res == FALSE) {
+		hview_print(w, err);
+	}
+
+}
+
+void hview_sys_evlog_call(GtkWidget *widget, gpointer data)
+{
+	HviewWidgetsT			*w = (HviewWidgetsT *) data;
+	HviewDomainEvLogWidgetsT	dw;
+	GtkWidget			*dialog_window;
+	GtkTreeModel			*model;
+	GtkTreeStore			*store;
+	GtkTreeIter			iter;
+	GtkTreeSelection		*selection;
+	GtkWidget			*tview;
+	GtkWidget			*hbox;
+	GtkWidget			*label;
+	gint				page;
+	VtData1T			*evlog_data;
+	GList				*evlog_list;
+	GList				*var_val_l;
+	VtVarValT			*var_val;
+	guint				sid,		rid;
+	gint				res;
+	gchar				name[1024];
+	gchar				err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &rid, -1);
+	} else {
+		return;
+	}
+
+	dw.parent_widgets = w;
+	dialog_window = hview_get_domain_evlog_window(&dw);
+	dw.dialog_window = dialog_window;
+
+	res = voh_event_log_info_get(sid, rid, &evlog_data, err);
+	if (res == FALSE) {
+		label = gtk_label_new("UNKNOWN");
+		gtk_box_pack_start(GTK_BOX(dw.general_tab.info_box), label,
+								TRUE, TRUE, 0);
+		gtk_widget_show_all(dialog_window);
+		res = gtk_dialog_run(GTK_DIALOG(dialog_window));
+		gtk_widget_destroy(dialog_window);
+		return;
+	}
+ 
+	var_val_l = vt_get_var_val_list(evlog_data);
+	while (var_val_l != NULL) {
+		var_val = (VtVarValT *) var_val_l->data;
+		if (strcmp(var_val->var, "Event log enable") == 0) {
+			var_val_l = var_val_l->next;
+			continue;
+		}
+		hbox = gtk_hbox_new(TRUE, 5);
+		gtk_box_pack_start(GTK_BOX(dw.general_tab.info_box), hbox,
+							FALSE, FALSE, 5);
+		label = gtk_label_new(var_val->var);
+		gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 10);
+		label = gtk_label_new(var_val->val);
+		gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 1);
+		var_val_l = var_val_l->next;
+	} 
+
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(
+						dw.general_tab.enable_state),
+					vt_data_value_get_as_int(evlog_data,
+								"enabled"));
+
+	gtk_widget_set_sensitive(dw.general_tab.overflow_reset,
+			vt_data_value_get_as_int(evlog_data,
+				"overflow_resetable"));
+
+	vt_data_destroy1(evlog_data);
+
+
+	evlog_list = voh_get_evlog_entries(sid, rid, err);
+
+	store = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
+                                 GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_UINT,
+                                 G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+
+	while (evlog_list != NULL) {
+		evlog_data = (VtData1T *) evlog_list->data;
+		gtk_tree_store_append(store, &iter, NULL);
+		sid = vt_data_value_get_as_int(evlog_data, "entry_id");
+		sprintf(name, "%s event #%d", vt_data_value_str_get1(evlog_data,
+							"event.event_type"),
+							sid);
+		gtk_tree_store_set(store, &iter,
+				VOH_LIST_COLUMN_NAME, name,
+				VOH_LIST_COLUMN_ID, sid,
+				-1);
+		evlog_list = evlog_list->next;
+	}
+
+	gtk_tree_view_set_model(GTK_TREE_VIEW(dw.evlog_tab.evlog_view),
+				GTK_TREE_MODEL(store));
+	g_object_unref(store);
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(
+						dw.evlog_tab.evlog_view));
+//	g_signal_connect(G_OBJECT(dw.evlog_tab.evlog_view), "unselect-all",
+//			G_CALLBACK(hview_sys_evlog_unsel_call),
+//			(gpointer) &dw);
+	g_signal_connect(G_OBJECT(selection), "changed",
+			G_CALLBACK(hview_sys_evlog_selected_call),
+			(gpointer) &dw);
+	g_signal_connect(G_OBJECT(dw.evlog_tab.clear_evlog), "clicked",
+			G_CALLBACK(hview_clear_sys_event_log_call),
+			(gpointer) &dw);
+
+	gtk_widget_show_all(dialog_window);
+	res = gtk_dialog_run(GTK_DIALOG(dialog_window));
+	switch (res) {
+	case GTK_RESPONSE_OK:
+		hview_sys_evlog_ok_response((gpointer) &dw);
+		break;
+	default:
+		break;
+	}
+
+	gtk_widget_destroy(dialog_window);
+	
+}
+
+void hview_sys_evlog_clear_call(GtkWidget *widget, gpointer data)
+{
+	HviewWidgetsT			*w = (HviewWidgetsT *) data;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter;
+	GtkTreeSelection		*selection;
+	GtkWidget			*tview;
+	gint				page;
+	guint				sid,		rid;
+	gint				res;
+	gchar				err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &rid, -1);
+	} else {
+		return;
+	}
+
+	res = voh_event_log_clear(sid, rid, err);
+
+	if (res == FALSE) {
+		hview_print(w, err);
+	}
+}
+
+void hview_sys_evlog_overflow_reset_call(GtkWidget *widget, gpointer data)
+{
+	HviewWidgetsT			*w = (HviewWidgetsT *) data;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter;
+	GtkTreeSelection		*selection;
+	GtkWidget			*tview;
+	gint				page;
+	guint				sid,		rid;
+	gint				res;
+	gchar				err[1024];
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &rid, -1);
+	} else {
+		return;
+	}
+
+	res = voh_event_log_overflow_reset(sid, rid, err);
+
+	if (res == FALSE) {
+		hview_print(w, err);
+	}
+}
+
+gboolean hview_sys_evlog_selected_call(GtkTreeSelection *selection,
+					  gpointer data)
+{
+	HviewDomainEvLogWidgetsT	*dw = (HviewDomainEvLogWidgetsT *) data;
+	HviewWidgetsT			*w = dw->parent_widgets;
+	GList				*childs_list;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter;
+	GtkWidget			*tview;
+	gint				page;
+	guint				sid,		rid,	id;
+	gint				res;
+	gchar				err[1024];
+	GtkWidget			*widget;
+	GList				*var_val_l;
+	VtVarValT			*var_val;
+	VtData1T			*entry_data;
+	GtkWidget			*label;
+	GtkWidget			*hbox;
+	GtkTreeSelection		*dom_sel;
+
+	childs_list = gtk_container_get_children(GTK_CONTAINER(
+						dw->evlog_tab.entryinfo_box));
+	while (childs_list != NULL) {
+		widget = GTK_WIDGET(childs_list->data);
+		gtk_container_remove(GTK_CONTAINER(dw->evlog_tab.entryinfo_box),
+					widget);
+		childs_list = childs_list->next;
+	}
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	dom_sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(dom_sel, &model, &iter)) {
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &rid, -1);
+	} else {
+		return;
+	}
+
+	res = gtk_tree_selection_get_selected(selection, &model, &iter);
+	if (res == FALSE) {
+		return FALSE;
+	}
+
+	gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &id, -1);
+
+	res = voh_get_evlog_entry_info(sid, rid, id, &entry_data, err);
+
+	if (res == FALSE) {
+		hview_print(w, err);
+		label = gtk_label_new("UNKNOWN");
+		gtk_box_pack_start(GTK_BOX(dw->evlog_tab.entryinfo_box),
+					label, TRUE, TRUE, 0);
+		gtk_widget_show_all(dw->evlog_tab.entryinfo_box);
+		return FALSE;
+	}
+
+	var_val_l = vt_get_var_val_list(entry_data);
+	while (var_val_l != NULL) {
+		var_val = (VtVarValT *) var_val_l->data;
+		hbox = gtk_hbox_new(TRUE, 5);
+		gtk_box_pack_start(GTK_BOX(dw->evlog_tab.entryinfo_box), hbox,
+							FALSE, FALSE, 0);
+		label = gtk_label_new(var_val->var);
+		gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 5);
+		label = gtk_label_new(var_val->val);
+		gtk_box_pack_start(GTK_BOX(hbox), label, TRUE, TRUE, 1);
+		var_val_l = var_val_l->next;
+	}
+
+	vt_data_destroy1(entry_data);
+
+	gtk_widget_show_all(dw->evlog_tab.entryinfo_box);
+
+	return TRUE;
+}
+
+gboolean hview_clear_sys_event_log_call(GtkWidget *widget,
+					   gpointer data)
+{
+	HviewDomainEvLogWidgetsT	*dw = (HviewDomainEvLogWidgetsT *) data;
+	HviewWidgetsT			*w = dw->parent_widgets;
+	GList				*childs_list;
+	GtkTreeModel			*model;
+	GtkTreeIter			iter;
+	GtkTreeStore			*store;
+	GtkWidget			*tview;
+	gint				page;
+	guint				sid,		rid;
+	gint				res;
+	gchar				err[1024];
+	GList				*var_val_l,	*evlog_list;
+	VtVarValT			*var_val;
+	VtData1T			*evlog_data;
+	GtkTreeSelection		*selection;
+	gchar				name[1024];
+
+	childs_list = gtk_container_get_children(GTK_CONTAINER(
+						dw->evlog_tab.entryinfo_box));
+	while (childs_list != NULL) {
+		widget = GTK_WIDGET(childs_list->data);
+		gtk_container_remove(GTK_CONTAINER(dw->evlog_tab.entryinfo_box),
+					widget);
+		childs_list = childs_list->next;
+	}
+
+	gtk_tree_view_set_model(GTK_TREE_VIEW(dw->evlog_tab.evlog_view),
+				NULL);
+
+	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(w->tab_windows));
+	if (page < 0)
+		return;
+	if (w->tab_views[page].resource_view == NULL ||
+			w->tab_views[page].detail_view == NULL)
+		return;
+	tview = w->tab_views[page].resource_view;
+	sid = w->tab_views[page].sessionid;
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(tview));
+
+	if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+		gtk_tree_model_get(model, &iter, VOH_LIST_COLUMN_ID, &rid, -1);
+	} else {
+		return;
+	}
+
+	res = voh_event_log_clear(sid, rid, err);
+
+	if (res == FALSE) {
+		hview_print(w, err);
+	}
+
+	evlog_list = voh_get_evlog_entries(sid, rid, err);
+
+	store = gtk_tree_store_new(VOH_LIST_NUM_COL, G_TYPE_STRING,
+                                 GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_UINT,
+                                 G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+
+	while (evlog_list != NULL) {
+		evlog_data = (VtData1T *) evlog_list->data;
+		gtk_tree_store_append(store, &iter, NULL);
+		sid = vt_data_value_get_as_int(evlog_data, "entry_id");
+		sprintf(name, "%s event #%d", vt_data_value_str_get1(evlog_data,
+							"event.event_type"),
+							sid);
+		gtk_tree_store_set(store, &iter,
+				VOH_LIST_COLUMN_NAME, name,
+				VOH_LIST_COLUMN_ID, sid,
 				-1);
 		evlog_list = evlog_list->next;
 	}

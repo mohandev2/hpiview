@@ -280,6 +280,28 @@ GtkWidget *hwidget_get_iter_popup(GtkTreeModel *store,
 	case VOH_ITER_IS_RPT:
 		menu = gtk_menu_new();
 
+		if (capability & VOH_ITER_CAPABILITY_EVENT_LOG) {
+			sitem = hwidget_get_menu_item(NULL, "Event log",
+					      hview_sys_evlog_call,
+					      data);
+			gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+			sitem = hwidget_get_menu_item(NULL,
+					"Event log timestamp",
+					hview_sys_evlog_time_call,
+					data);
+			gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+			sitem = hwidget_get_menu_item(NULL, "Event log clear",
+					      hview_sys_evlog_clear_call,
+					      data);
+			gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+			sitem = gtk_separator_menu_item_new();
+			gtk_container_add(GTK_CONTAINER(menu), sitem);
+
+		}
+
 		if (capability & VOH_ITER_CAPABILITY_CONTROL) {
 			smenu = gtk_menu_new();
 			item = hwidget_get_menu_item(NULL, "parameters control",
@@ -352,8 +374,11 @@ GtkWidget *hwidget_get_iter_popup(GtkTreeModel *store,
 			gtk_container_add(GTK_CONTAINER(smenu), sitem);
 		}
 
-		sitem = gtk_separator_menu_item_new();
-		gtk_container_add(GTK_CONTAINER(menu), sitem);
+		if (capability & VOH_ITER_CAPABILITY_RESET ||
+				capability & VOH_ITER_CAPABILITY_POWER) {
+			sitem = gtk_separator_menu_item_new();
+			gtk_container_add(GTK_CONTAINER(menu), sitem);
+		}
 
 		sitem = hwidget_get_menu_item_from_stock(GTK_STOCK_PREFERENCES,
 							hview_rpt_settings_call,

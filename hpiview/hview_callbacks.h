@@ -147,5 +147,18 @@ gboolean hview_domain_alarm_selected_call(GtkTreeSelection *selection,
 gboolean hview_clear_domain_event_log_call(GtkWidget *widget,
 					   gpointer data);
 
+
+void hview_sys_evlog_time_ok_response(gpointer data);
+void hview_sys_evlog_time_call(GtkWidget *widget, gpointer data);
+void hview_sys_evlog_ok_response(gpointer data);
+void hview_sys_evlog_call(GtkWidget *widget, gpointer data);
+void hview_sys_evlog_clear_call(GtkWidget *widget, gpointer data);
+void hview_sys_evlog_overflow_reset_call(GtkWidget *widget, gpointer data);
+gboolean hview_sys_evlog_selected_call(GtkTreeSelection *selection,
+					  gpointer data);
+gboolean hview_clear_sys_event_log_call(GtkWidget *widget,
+					   gpointer data);
+
+
 #endif
 

@@ -235,6 +235,28 @@ const gchar *vt_convert_event_state(guint evs)
 
 }
 
+const gchar *vt_convert_event_category(guint category)
+{
+	static VtValNameMapT category_map[] = {
+		{SAHPI_EC_THRESHOLD,		"Threshold"},
+		{SAHPI_EC_USAGE,		"Usage"},
+		{SAHPI_EC_STATE,		"Generic"},
+		{SAHPI_EC_PRED_FAIL,		"Predictive fail"},
+		{SAHPI_EC_LIMIT,		"Limit"},
+		{SAHPI_EC_PERFORMANCE,		"Performance"},
+		{SAHPI_EC_SEVERITY,		"Severity"},
+		{SAHPI_EC_PRESENCE,		"Presence"},
+		{SAHPI_EC_ENABLE,		"Enabled"},
+		{SAHPI_EC_AVAILABILITY,		"Availability"},
+		{SAHPI_EC_REDUNDANCY,		"Redundancy"},
+		{SAHPI_EC_SENSOR_SPECIFIC,	"Sensor-specific"},
+		{ SAHPI_EC_GENERIC,		"OEM"},
+		{0, 0}
+	};
+
+	return vt_value_to_string(category_map, category, "%d");
+
+}
 const gchar *vt_convert_severity(guint sev)
 {
       static VtValNameMapT sev_map[] = {

@@ -21,8 +21,8 @@ const char *vohEventCategory2String(SaHpiEventCategoryT category);
 const char *vohSensorEventCtrl2String(SaHpiSensorEventCtrlT ctrl);
 const char *vohEventState2String(SaHpiEventStateT es,
 				 SaHpiEventCategoryT category);
-const char *vohSensorUnits2String(SaHpiSensorUnitsT unit);
-const char *vohSensorUnits2Short(SaHpiSensorUnitsT unit);
+const char *vohSensorUnits2String(SaHpiSensorUnitsT unit, gboolean p);
+const char *vohSensorUnits2Short(SaHpiSensorUnitsT unit, gboolean p);
 const char *vohSensorValue2FullString(SaHpiSensorRecT *sensor,
 				     SaHpiSensorReadingT *sv);
 const char *vohSensorThdMask2String(SaHpiSensorThdMaskT mask);
