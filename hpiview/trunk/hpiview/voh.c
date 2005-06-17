@@ -339,6 +339,9 @@ static void voh_add_resource(GtkTreeStore *pstore, guint sessionid,
 	    if (rpt->ResourceCapabilities & SAHPI_CAPABILITY_CONTROL) {
 		  capability |= VOH_ITER_CAPABILITY_CONTROL;
 	    }
+	    if (rpt->ResourceCapabilities & SAHPI_CAPABILITY_EVENT_LOG) {
+		  capability |= VOH_ITER_CAPABILITY_EVENT_LOG;
+	    }
 	    gtk_tree_store_set(pstore, &iter,
 			       VOH_LIST_COLUMN_NAME, path,
 			       VOH_LIST_COLUMN_ID, id,
@@ -770,30 +773,36 @@ GtkTreeModel *voh_rdr_info(guint sessionid, guint resourceid,
 		  gtk_tree_store_set(info_store, &iter,
 				     0, "Sensor base unit",
 				     1, vohSensorUnits2String(
-					    sensor->DataFormat.BaseUnits),
+					    sensor->DataFormat.BaseUnits,
+					    sensor->DataFormat.Percentage),
 				     -1);
 
 		  gtk_tree_store_append(info_store, &iter, NULL);
 		  gtk_tree_store_set(info_store, &iter,
 				     0, "Modifier base unit",
 				     1, vohSensorUnits2String(
-					    sensor->DataFormat.ModifierUnits),
+					    sensor->DataFormat.ModifierUnits,
+					    sensor->DataFormat.Percentage),
 				     -1);
 
 		  if (sensor->DataFormat.ModifierUse ==
 		      			SAHPI_SMUU_BASIC_TIMES_MODIFIER) {
 		  	sprintf(name, "%s*%s",
 				vohSensorUnits2String(
-				    sensor->DataFormat.BaseUnits),
+				    sensor->DataFormat.BaseUnits,
+				    sensor->DataFormat.Percentage),
 				vohSensorUnits2String(
-					    sensor->DataFormat.ModifierUnits));
+					    sensor->DataFormat.ModifierUnits,
+					    sensor->DataFormat.Percentage));
 		  } else if (sensor->DataFormat.ModifierUse ==
 		      			SAHPI_SMUU_BASIC_OVER_MODIFIER) {
 			sprintf(name, "%s/%s",
 				vohSensorUnits2String(
-				    sensor->DataFormat.BaseUnits),
+				    sensor->DataFormat.BaseUnits,
+				    sensor->DataFormat.Percentage),
 				vohSensorUnits2String(
-					    sensor->DataFormat.ModifierUnits));
+					    sensor->DataFormat.ModifierUnits,
+					    sensor->DataFormat.Percentage));
 		  } else {
 			sprintf(name, "none");
 		  }
@@ -1975,7 +1984,8 @@ GList *voh_get_sensor_info(guint sessionid,
 
 	if (sensor.DataFormat.IsSupported == TRUE) {
 		sprintf(info_str, "Sensor base unit:\t\%s",
-			vohSensorUnits2String(sensor.DataFormat.BaseUnits));
+			vohSensorUnits2String(sensor.DataFormat.BaseUnits,
+						sensor.DataFormat.Percentage));
 		info = g_list_prepend(info, g_strdup(info_str));
 	}
 
@@ -2582,7 +2592,8 @@ gboolean voh_get_sensor_thresholds(guint sessionid,
 			obj->state |= VOH_OBJECT_WRITABLE;
 		}
 		obj->data = g_strdup(vohSensorUnits2Short(
-					sensor.DataFormat.BaseUnits));
+					sensor.DataFormat.BaseUnits,
+					sensor.DataFormat.Percentage));
 		switch (obj->numerical) {
 		case SAHPI_STM_LOW_MINOR:
 			vohFillSensorReadingValue(obj, &thresholds.LowMinor);
@@ -4447,9 +4458,11 @@ gboolean voh_event_log_overflow_reset(guint sessionid,
 }
 
 GList *voh_get_evlog_entries(guint sessionid,
+			     guint resourceid,
 			     gchar *err)
 {
 	SaErrorT		rv;
+	SaHpiResourceIdT	rid = (SaHpiResourceIdT) resourceid;
 	SaHpiEventLogEntryIdT	entryid,	prev_entryid,	next_entryid;
 	SaHpiEventLogEntryT	evlog_entry;
 	VtData1T		*data = NULL;
@@ -4457,7 +4470,7 @@ GList *voh_get_evlog_entries(guint sessionid,
 
 	entryid = SAHPI_OLDEST_ENTRY;
 	while (entryid != SAHPI_NO_MORE_ENTRIES) {
-		rv = saHpiEventLogEntryGet(sessionid, -1, entryid,
+		rv = saHpiEventLogEntryGet(sessionid, rid, entryid,
 				&prev_entryid, &next_entryid, &evlog_entry,
 				NULL, NULL);
 		if (rv != SA_OK) {
@@ -4465,7 +4478,8 @@ GList *voh_get_evlog_entries(guint sessionid,
 		}
 		data = vt_data_new1(VT_EVENT_LOG_ENTRY);
 		vt_data_value_set1(data, "entry_id", evlog_entry.EntryId);
-		vt_data_value_set1(data, "timestamp", evlog_entry.Timestamp);
+		vt_data_value_set1(data, "timestamp",
+				evlog_entry.Event.Timestamp);
 		vt_data_value_set1(data, "event.source",
 					evlog_entry.Event.Source);
 		vt_data_value_set1(data, "event.event_type",
@@ -4531,6 +4545,8 @@ gboolean voh_get_evlog_entry_info(guint sessionid,
 			"Sensor number",	NULL},
 	{VT_VAR,	"sensor_type",		VT_UINT,
 			"Sensor type",		vt_convert_sensor_type},
+	{VT_VAR,	"event_category",	VT_UINT,
+			"Event category",	vt_convert_event_category},
 	{VT_VAR,	"assertion",		VT_BOOLEAN,
 			"Asserted event state",	vt_convert_boolean},
 	{0,		NULL,			0,	NULL,	NULL}
@@ -4560,6 +4576,8 @@ gboolean voh_get_evlog_entry_info(guint sessionid,
 			"Sensor number",	NULL},
 	{VT_VAR,	"sensor_type",		VT_UINT,
 			"Sensor type",		vt_convert_sensor_type},
+	{VT_VAR,	"event_category",	VT_UINT,
+			"Event category",	vt_convert_event_category},
 	{VT_VAR,	"sensor_enable",	VT_BOOLEAN,
 			"Sensor enable state",	vt_convert_boolean},
 	{VT_VAR,	"sensor_event_enable",	VT_BOOLEAN,
@@ -4665,6 +4683,8 @@ gboolean voh_get_evlog_entry_info(guint sessionid,
 					event.SensorEvent.SensorNum);
 		vt_data_value_set1(data, "sensor_type",
 					event.SensorEvent.SensorType);
+		vt_data_value_set1(data, "event_category",
+					event.SensorEvent.EventCategory);
 		vt_data_value_set1(data, "assertion",
 					event.SensorEvent.Assertion);
 		break;
@@ -4676,6 +4696,8 @@ gboolean voh_get_evlog_entry_info(guint sessionid,
 				event.SensorEnableChangeEvent.SensorNum);
 		vt_data_value_set1(data, "sensor_type",
 				event.SensorEnableChangeEvent.SensorType);
+		vt_data_value_set1(data, "event_category",
+				event.SensorEnableChangeEvent.EventCategory);
 		vt_data_value_set1(data, "sensor_enable",
 				event.SensorEnableChangeEvent.SensorEnable);
 		vt_data_value_set1(data, "sensor_event_enable",
@@ -4732,7 +4754,7 @@ gboolean voh_get_evlog_entry_info(guint sessionid,
 		break;
 	}
 
-	vt_data_value_set1(data, "timestamp", evlog_info.Timestamp);
+	vt_data_value_set1(data, "timestamp", evlog_info.Event.Timestamp);
 	vt_data_value_set1(data, "severity",
 					evlog_info.Event.Severity);
 	vt_data_value_set1(data, "source", evlog_info.Event.Source);

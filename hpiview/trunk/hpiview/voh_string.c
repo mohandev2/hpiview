@@ -726,7 +726,7 @@ GList *vohEventState2List(SaHpiEventCategoryT category)
       }
 }
 
-const char *vohSensorUnits2String(SaHpiSensorUnitsT unit)
+const char *vohSensorUnits2String(SaHpiSensorUnitsT unit, gboolean is_perc)
 {
       static cMap units_map[] = {
 		{SAHPI_SU_UNSPECIFIED,	"unspecified unit"},
@@ -822,10 +822,14 @@ const char *vohSensorUnits2String(SaHpiSensorUnitsT unit)
 		{SAHPI_SU_UNCORRECTABLE_ERRORS, "uncorrectable error(S)"},
 		{0, 0}
       };
+
+      if (is_perc == TRUE) {
+	      return "%";
+      }
       return ValueToString(units_map, unit, "%d");
 }
 
-const char *vohSensorUnits2Short(SaHpiSensorUnitsT unit)
+const char *vohSensorUnits2Short(SaHpiSensorUnitsT unit, gboolean is_perc)
 {
       static cMap units_map[] = {
 		{SAHPI_SU_UNSPECIFIED,	""},
@@ -921,6 +925,10 @@ const char *vohSensorUnits2Short(SaHpiSensorUnitsT unit)
 		{SAHPI_SU_UNCORRECTABLE_ERRORS, "uncorrectable error(s)"},
 		{0, 0}
       };
+
+      if (is_perc == TRUE) {
+	      return "%";
+      }
       return ValueToString(units_map, unit, "%d");
 }
 
@@ -937,7 +945,8 @@ const char *vohSensorValue2FullString(SaHpiSensorRecT *sensor,
 	    sprintf(baseu, "");
       } else {
 	    sprintf(baseu, "(%s)", vohSensorUnits2Short(
-					sensor->DataFormat.BaseUnits));
+					sensor->DataFormat.BaseUnits,
+					sensor->DataFormat.Percentage));
       }
 
       sprintf(value, "%s %s", vohSensorValue2String(sv), baseu);

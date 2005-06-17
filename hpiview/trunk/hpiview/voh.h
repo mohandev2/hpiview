@@ -58,6 +58,7 @@ enum {
 #define VOH_ITER_CAPABILITY_POWER		0x1
 #define VOH_ITER_CAPABILITY_RESET		0x2
 #define VOH_ITER_CAPABILITY_CONTROL		0x4
+#define VOH_ITER_CAPABILITY_EVENT_LOG		0x8
 
 #define VOH_ITER_SENSOR_CAPABILITY_UNSPECIFIED	0x0
 #define VOH_ITER_SENSOR_CAPABILITY_THRESHOLD	0x1
@@ -326,9 +327,7 @@ gboolean voh_get_evlog_entry_info(guint sessionid,
 				  gchar *err);
 
 GList *voh_get_evlog_entries(guint sessionid,
-			     gchar *err);
-
-GList *voh_get_evlog_entries(guint sessionid,
+			     guint resourceid,
 			     gchar *err);
 
 GtkListStore *voh_get_ctrl_digital_state_list(void);
