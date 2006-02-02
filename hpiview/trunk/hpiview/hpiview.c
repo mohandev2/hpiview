@@ -64,7 +64,9 @@ int main(int argc, char *argv[])
 {
 	gtk_init(&argc, &argv);
 
-	g_thread_init(NULL);
+	if (!g_thread_supported())
+    		g_thread_init (NULL);
+
 	hutil_add_pixmap_directory (PACKAGE_DATA_DIR "/" PACKAGE "/pixmaps");
       
 	hview_init();
